@@ -3,7 +3,6 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
 	cartItems: JSON.parse(localStorage.getItem("cartItems")) || [],
 	shippingAddress: JSON.parse(localStorage.getItem("shippingAddress")) || {},
-	paymentMethod: localStorage.getItem("paymentMethod") || "PayPal",
 	itemsPrice: 0,
 	shippingPrice: 0,
 	taxPrice: 0,
@@ -43,10 +42,6 @@ const cartSlice = createSlice({
 				JSON.stringify(action.payload)
 			);
 		},
-		savePaymentMethod: (state, action) => {
-			state.paymentMethod = action.payload;
-			localStorage.setItem("paymentMethod", action.payload);
-		},
 		calculatePrices: (state) => {
 			state.itemsPrice = state.cartItems.reduce(
 				(acc, item) => acc + item.price * item.quantity,
@@ -65,14 +60,12 @@ const cartSlice = createSlice({
 		clearCart: (state) => {
 			state.cartItems = [];
 			state.shippingAddress = {};
-			state.paymentMethod = "PayPal";
 			state.itemsPrice = 0;
 			state.shippingPrice = 0;
 			state.taxPrice = 0;
 			state.totalPrice = 0;
 			localStorage.removeItem("cartItems");
 			localStorage.removeItem("shippingAddress");
-			localStorage.removeItem("paymentMethod");
 		},
 	},
 });
@@ -81,7 +74,6 @@ export const {
 	addToCart,
 	removeFromCart,
 	saveShippingAddress,
-	savePaymentMethod,
 	calculatePrices,
 	clearCart,
 } = cartSlice.actions;

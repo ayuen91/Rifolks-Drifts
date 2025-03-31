@@ -1,1 +1,2 @@
-web: npm start 
+web: node server.js
+release: node migrations/run.js 

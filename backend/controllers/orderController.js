@@ -1,24 +1,23 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const { createError } = require("../utils/error");
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
-const createOrder = async (req, res) => {
+const createOrder = async (req, res, next) => {
 	try {
 		const {
 			orderItems,
 			shippingAddress,
-			paymentMethod,
 			itemsPrice,
-			taxPrice,
 			shippingPrice,
 			totalPrice,
+			specialInstructions,
 		} = req.body;
 
-		if (orderItems && orderItems.length === 0) {
-			res.status(400).json({ message: "No order items" });
-			return;
+		if (!orderItems || orderItems.length === 0) {
+			return next(createError(400, "No order items"));
 		}
 
 		// Update product stock
@@ -34,29 +33,36 @@ const createOrder = async (req, res) => {
 			user: req.user._id,
 			orderItems,
 			shippingAddress,
-			paymentMethod,
 			itemsPrice,
-			taxPrice,
 			shippingPrice,
 			totalPrice,
+			specialInstructions,
+			paymentStatus: "pending",
+			deliveryStatus: "pending",
+			orderStatus: "pending",
 		});
 
 		const createdOrder = await order.save();
 		res.status(201).json(createdOrder);
 	} catch (error) {
-		res.status(500).json({ message: error.message });
+		next(error);
 	}
 };
 
 // @desc    Get order by ID
 // @route   GET /api/orders/:id
 // @access  Private
-const getOrderById = async (req, res) => {
+const getOrderById = async (req, res, next) => {
 	try {
 		const order = await Order.findById(req.params.id)
-			.populate("user", "username email")
+			.populate("user", "name email")
 			.populate("orderItems.product", "name price image");
 
+		if (!order) {
+			return next(createError(404, "Order not found"));
+		}
+
+		res.json(order);
 		if (order) {
 			res.json(order);
 		} else {

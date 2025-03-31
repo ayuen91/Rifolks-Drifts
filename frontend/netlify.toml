@@ -1,14 +1,17 @@
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = "build"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "https://your-heroku-app.herokuapp.com/api/:splat"
   status = 200
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "18.17.0"
+
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
 
 [[headers]]
   for = "/*"

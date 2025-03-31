@@ -1,141 +1,159 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {
-	saveShippingAddress,
-	savePaymentMethod,
-} from "../store/slices/cartSlice";
 import { createOrder } from "../store/slices/orderSlice";
-import toast from "react-hot-toast";
+import { clearCart } from "../store/slices/cartSlice";
+import { toast } from "react-toastify";
 
 const Checkout = () => {
-	const [formData, setFormData] = useState({
-		address: "",
-		city: "",
-		postalCode: "",
-		country: "",
-		paymentMethod: "PayPal",
-	});
-	const [errors, setErrors] = useState({});
-
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
-	const { cartItems, shippingAddress } = useSelector((state) => state.cart);
+	const { cartItems, totalPrice } = useSelector((state) => state.cart);
 	const { user } = useSelector((state) => state.auth);
-	const { loading, error } = useSelector((state) => state.orders);
 
-	const subtotal = cartItems.reduce(
-		(acc, item) => acc + item.price * item.qty,
-		0
-	);
-	const shipping = subtotal > 100 ? 0 : 10;
-	const tax = subtotal * 0.1;
-	const total = subtotal + shipping + tax;
+	const [formData, setFormData] = useState({
+		fullName: user?.name || "",
+		phoneNumber: "",
+		address: "",
+		city: "",
+		state: "",
+		postalCode: "",
+		specialInstructions: "",
+		codAgreement: false,
+	});
 
-	const validateForm = () => {
-		const newErrors = {};
-		if (!formData.address) {
-			newErrors.address = "Address is required";
+	useEffect(() => {
+		if (cartItems.length === 0) {
+			navigate("/cart");
 		}
-		if (!formData.city) {
-			newErrors.city = "City is required";
-		}
-		if (!formData.postalCode) {
-			newErrors.postalCode = "Postal code is required";
-		}
-		if (!formData.country) {
-			newErrors.country = "Country is required";
-		}
-		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
-	};
+	}, [cartItems, navigate]);
 
 	const handleChange = (e) => {
-		const { name, value } = e.target;
-		setFormData((prev) => ({ ...prev, [name]: value }));
+		const { name, value, type, checked } = e.target;
+		setFormData((prev) => ({
+			...prev,
+			[name]: type === "checkbox" ? checked : value,
+		}));
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		if (!validateForm()) return;
+
+		if (!formData.codAgreement) {
+			toast.error("Please agree to the Cash on Delivery terms");
+			return;
+		}
+
+		const orderData = {
+			orderItems: cartItems,
+			shippingAddress: {
+				fullName: formData.fullName,
+				phoneNumber: formData.phoneNumber,
+				address: formData.address,
+				city: formData.city,
+				state: formData.state,
+				postalCode: formData.postalCode,
+			},
+			itemsPrice: totalPrice,
+			shippingPrice: 0,
+			totalPrice,
+			specialInstructions: formData.specialInstructions,
+		};
 
 		try {
-			dispatch(saveShippingAddress(formData));
-			dispatch(savePaymentMethod(formData.paymentMethod));
-
-			const orderData = {
-				orderItems: cartItems,
-				shippingAddress: formData,
-				paymentMethod: formData.paymentMethod,
-				itemsPrice: subtotal,
-				shippingPrice: shipping,
-				taxPrice: tax,
-				totalPrice: total,
-			};
-
 			await dispatch(createOrder(orderData)).unwrap();
-			toast.success("Order placed successfully");
-			navigate(`/orders/${orderData._id}`);
+			dispatch(clearCart());
+			toast.success("Order placed successfully!");
+			navigate("/order-confirmation");
 		} catch (error) {
-			toast.error(error.message);
+			toast.error(error.message || "Failed to place order");
 		}
 	};
 
 	return (
 		<div className="container mx-auto px-4 py-8">
+			<h1 className="text-3xl font-bold mb-8">Checkout</h1>
+
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-				{/* Shipping Information */}
 				<div>
-					<h2 className="text-2xl font-bold mb-6">
+					<h2 className="text-xl font-semibold mb-4">
 						Shipping Information
 					</h2>
 					<form onSubmit={handleSubmit} className="space-y-4">
 						<div>
-							<label className="block text-gray-700 mb-2">
-								Address
+							<label className="block text-sm font-medium text-gray-700">
+								Full Name
 							</label>
 							<input
 								type="text"
+								name="fullName"
+								value={formData.fullName}
+								onChange={handleChange}
+								required
+								className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+							/>
+						</div>
+
+						<div>
+							<label className="block text-sm font-medium text-gray-700">
+								Phone Number
+							</label>
+							<input
+								type="tel"
+								name="phoneNumber"
+								value={formData.phoneNumber}
+								onChange={handleChange}
+								required
+								className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+							/>
+						</div>
+
+						<div>
+							<label className="block text-sm font-medium text-gray-700">
+								Address
+							</label>
+							<textarea
 								name="address"
 								value={formData.address}
 								onChange={handleChange}
-								className={`w-full px-3 py-2 border rounded-md ${
-									errors.address
-										? "border-red-500"
-										: "border-gray-300"
-								} focus:outline-none focus:ring-2 focus:ring-primary`}
+								required
+								rows="3"
+								className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 							/>
-							{errors.address && (
-								<p className="mt-1 text-sm text-red-500">
-									{errors.address}
-								</p>
-							)}
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<div>
+								<label className="block text-sm font-medium text-gray-700">
+									City
+								</label>
+								<input
+									type="text"
+									name="city"
+									value={formData.city}
+									onChange={handleChange}
+									required
+									className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-medium text-gray-700">
+									State
+								</label>
+								<input
+									type="text"
+									name="state"
+									value={formData.state}
+									onChange={handleChange}
+									required
+									className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+								/>
+							</div>
 						</div>
 
 						<div>
-							<label className="block text-gray-700 mb-2">
-								City
-							</label>
-							<input
-								type="text"
-								name="city"
-								value={formData.city}
-								onChange={handleChange}
-								className={`w-full px-3 py-2 border rounded-md ${
-									errors.city
-										? "border-red-500"
-										: "border-gray-300"
-								} focus:outline-none focus:ring-2 focus:ring-primary`}
-							/>
-							{errors.city && (
-								<p className="mt-1 text-sm text-red-500">
-									{errors.city}
-								</p>
-							)}
-						</div>
-
-						<div>
-							<label className="block text-gray-700 mb-2">
+							<label className="block text-sm font-medium text-gray-700">
 								Postal Code
 							</label>
 							<input
@@ -143,115 +161,70 @@ const Checkout = () => {
 								name="postalCode"
 								value={formData.postalCode}
 								onChange={handleChange}
-								className={`w-full px-3 py-2 border rounded-md ${
-									errors.postalCode
-										? "border-red-500"
-										: "border-gray-300"
-								} focus:outline-none focus:ring-2 focus:ring-primary`}
+								required
+								className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 							/>
-							{errors.postalCode && (
-								<p className="mt-1 text-sm text-red-500">
-									{errors.postalCode}
-								</p>
-							)}
 						</div>
 
 						<div>
-							<label className="block text-gray-700 mb-2">
-								Country
+							<label className="block text-sm font-medium text-gray-700">
+								Special Instructions
 							</label>
+							<textarea
+								name="specialInstructions"
+								value={formData.specialInstructions}
+								onChange={handleChange}
+								rows="3"
+								className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+							/>
+						</div>
+
+						<div className="flex items-center">
 							<input
-								type="text"
-								name="country"
-								value={formData.country}
+								type="checkbox"
+								name="codAgreement"
+								checked={formData.codAgreement}
 								onChange={handleChange}
-								className={`w-full px-3 py-2 border rounded-md ${
-									errors.country
-										? "border-red-500"
-										: "border-gray-300"
-								} focus:outline-none focus:ring-2 focus:ring-primary`}
+								required
+								className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
 							/>
-							{errors.country && (
-								<p className="mt-1 text-sm text-red-500">
-									{errors.country}
-								</p>
-							)}
-						</div>
-
-						<div>
-							<label className="block text-gray-700 mb-2">
-								Payment Method
+							<label className="ml-2 block text-sm text-gray-900">
+								I agree to pay the total amount in cash upon
+								delivery
 							</label>
-							<select
-								name="paymentMethod"
-								value={formData.paymentMethod}
-								onChange={handleChange}
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-							>
-								<option value="PayPal">PayPal</option>
-								<option value="Stripe">Stripe</option>
-								<option value="Credit Card">Credit Card</option>
-							</select>
 						</div>
 
 						<button
 							type="submit"
-							disabled={loading}
-							className={`w-full py-2 px-4 rounded-md text-white ${
-								loading
-									? "bg-primary/70 cursor-not-allowed"
-									: "bg-primary hover:bg-primary-dark"
-							} transition-colors`}
+							className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
 						>
-							{loading ? "Processing..." : "Place Order"}
+							Place Order
 						</button>
 					</form>
 				</div>
 
-				{/* Order Summary */}
 				<div>
-					<h2 className="text-2xl font-bold mb-6">Order Summary</h2>
-					<div className="bg-white p-6 rounded-lg shadow-md">
-						<div className="space-y-4">
-							{cartItems.map((item) => (
-								<div
-									key={item._id}
-									className="flex justify-between"
-								>
-									<div>
-										<p className="font-medium">
-											{item.name}
-										</p>
-										<p className="text-sm text-gray-500">
-											{item.qty} x ${item.price}
-										</p>
-									</div>
-									<span>
-										${(item.qty * item.price).toFixed(2)}
-									</span>
-								</div>
-							))}
-						</div>
-
-						<div className="mt-6 space-y-2">
-							<div className="flex justify-between">
-								<span>Subtotal</span>
-								<span>${subtotal.toFixed(2)}</span>
+					<h2 className="text-xl font-semibold mb-4">
+						Order Summary
+					</h2>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						{cartItems.map((item) => (
+							<div
+								key={item._id}
+								className="flex justify-between mb-2"
+							>
+								<span>
+									{item.name} x {item.quantity}
+								</span>
+								<span>
+									${(item.price * item.quantity).toFixed(2)}
+								</span>
 							</div>
-							<div className="flex justify-between">
-								<span>Shipping</span>
-								<span>${shipping.toFixed(2)}</span>
-							</div>
-							<div className="flex justify-between">
-								<span>Tax</span>
-								<span>${tax.toFixed(2)}</span>
-							</div>
-							<div className="border-t border-gray-200 pt-2 mt-2">
-								<div className="flex justify-between font-semibold">
-									<span>Total</span>
-									<span>${total.toFixed(2)}</span>
-								</div>
-							</div>
+						))}
+						<div className="border-t border-gray-200 my-2"></div>
+						<div className="flex justify-between font-semibold">
+							<span>Total</span>
+							<span>${totalPrice.toFixed(2)}</span>
 						</div>
 					</div>
 				</div>
