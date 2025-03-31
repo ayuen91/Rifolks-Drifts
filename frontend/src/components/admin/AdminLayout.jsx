@@ -1,0 +1,150 @@
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+	FiBell,
+	FiUsers,
+	FiPackage,
+	FiShoppingBag,
+	FiSettings,
+	FiLogOut,
+} from "react-icons/fi";
+import { logout } from "../../store/slices/authSlice";
+import { fetchNotifications } from "../../store/slices/notificationSlice";
+import NotificationsDropdown from "./NotificationsDropdown";
+import logo from "../../assets/logo.svg";
+
+const AdminLayout = ({ children }) => {
+	const [showNotifications, setShowNotifications] = useState(false);
+	const dispatch = useDispatch();
+	const navigate = useNavigate();
+	const location = useLocation();
+	const { user, role } = useSelector((state) => state.auth);
+	const { unreadCount } = useSelector((state) => state.notifications);
+
+	useEffect(() => {
+		dispatch(fetchNotifications());
+		const interval = setInterval(() => {
+			dispatch(fetchNotifications());
+		}, 30000); // Fetch notifications every 30 seconds
+
+		return () => clearInterval(interval);
+	}, [dispatch]);
+
+	const handleLogout = () => {
+		dispatch(logout());
+		navigate("/admin/login");
+	};
+
+	const navigation = [
+		{ name: "Dashboard", path: "/admin", icon: FiShoppingBag },
+		{ name: "Products", path: "/admin/products", icon: FiPackage },
+		{ name: "Orders", path: "/admin/orders", icon: FiShoppingBag },
+		...(role === "admin"
+			? [{ name: "Staff", path: "/admin/staff", icon: FiUsers }]
+			: []),
+		{ name: "Settings", path: "/admin/settings", icon: FiSettings },
+	];
+
+	return (
+		<div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+			{/* Sidebar */}
+			<div className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg">
+				<div className="flex flex-col h-full">
+					{/* Logo */}
+					<div className="flex items-center p-4 border-b dark:border-gray-700">
+						<img
+							src={logo}
+							alt="Rifolks Drifts"
+							className="w-8 h-8"
+						/>
+						<span className="ml-2 text-lg font-heading font-bold">
+							Admin Panel
+						</span>
+					</div>
+
+					{/* Navigation */}
+					<nav className="flex-1 p-4 space-y-1">
+						{navigation.map((item) => {
+							const Icon = item.icon;
+							const isActive = location.pathname === item.path;
+							return (
+								<Link
+									key={item.name}
+									to={item.path}
+									className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+										isActive
+											? "bg-accent text-white"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+									}`}
+								>
+									<Icon className="w-5 h-5 mr-3" />
+									{item.name}
+								</Link>
+							);
+						})}
+					</nav>
+
+					{/* User Info */}
+					<div className="p-4 border-t dark:border-gray-700">
+						<div className="flex items-center">
+							<div className="flex-1">
+								<p className="font-medium">{user?.name}</p>
+								<p className="text-sm text-gray-500 dark:text-gray-400">
+									{role}
+								</p>
+							</div>
+							<button
+								onClick={handleLogout}
+								className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+							>
+								<FiLogOut className="w-5 h-5" />
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Main Content */}
+			<div className="ml-64">
+				{/* Header */}
+				<header className="bg-white dark:bg-gray-800 shadow-sm">
+					<div className="flex items-center justify-between px-6 py-4">
+						<h1 className="text-2xl font-heading font-bold">
+							{navigation.find(
+								(item) => item.path === location.pathname
+							)?.name || "Dashboard"}
+						</h1>
+
+						{/* Notifications */}
+						<div className="relative">
+							<button
+								onClick={() =>
+									setShowNotifications(!showNotifications)
+								}
+								className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 relative"
+							>
+								<FiBell className="w-6 h-6" />
+								{unreadCount > 0 && (
+									<span className="absolute -top-1 -right-1 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+										{unreadCount}
+									</span>
+								)}
+							</button>
+							{showNotifications && (
+								<NotificationsDropdown
+									onClose={() => setShowNotifications(false)}
+								/>
+							)}
+						</div>
+					</div>
+				</header>
+
+				{/* Page Content */}
+				<main className="p-6">{children}</main>
+			</div>
+		</div>
+	);
+};
+
+export default AdminLayout;
