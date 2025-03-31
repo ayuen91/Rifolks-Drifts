@@ -1,112 +1,186 @@
-# Deployment Guide
+# Deployment Guide for Rifolks Drifts
 
-## Frontend (Netlify)
+## Prerequisites
 
-1. Environment Variables
+-   Node.js >= 18.17.0
+-   Git
+-   Heroku CLI
+-   Netlify CLI
+-   PostgreSQL database
 
-    - Set up the following environment variables in Netlify:
-        ```
-        VITE_SUPABASE_URL=your_supabase_url
-        VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-        VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-        VITE_CLIENT_URL=your_netlify_url
-        ```
+## Environment Variables Setup
 
-2. Build Settings
+### Backend (Heroku)
 
-    - Build command: `npm run build`
-    - Publish directory: `dist`
-    - Node version: 18
+Required environment variables:
 
-3. Deployment
-    - Connect your GitHub repository to Netlify
-    - Enable automatic deployments
-    - Configure branch deployments (main/production)
+```bash
+# Server
+PORT=3000
+NODE_ENV=production
 
-## Backend (Heroku)
+# Database
+DATABASE_URL=postgresql://...
 
-1. Environment Variables
+# JWT
+JWT_SECRET=<generate-a-secure-secret>
+JWT_EXPIRES_IN=7d
 
-    - Set up the following environment variables in Heroku:
-        ```
-        NODE_ENV=production
-        SUPABASE_URL=your_supabase_url
-        SUPABASE_ANON_KEY=your_supabase_anon_key
-        STRIPE_SECRET_KEY=your_stripe_secret_key
-        JWT_SECRET=your_jwt_secret
-        CLIENT_URL=your_netlify_url
-        ```
+# Supabase
+SUPABASE_URL=<your-supabase-url>
+SUPABASE_ANON_KEY=<your-supabase-anon-key>
 
-2. Database
+# CORS
+ALLOWED_ORIGINS=https://your-netlify-app.netlify.app
 
-    - Ensure Supabase database is properly configured
-    - Run any pending migrations
-    - Verify database connections
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 
-3. Deployment
-    - Connect your GitHub repository to Heroku
-    - Enable automatic deployments
-    - Configure branch deployments (main/production)
+# Logging
+LOG_LEVEL=info
+```
+
+### Frontend (Netlify)
+
+Required environment variables:
+
+```bash
+# API Configuration
+REACT_APP_API_URL=https://your-heroku-app.herokuapp.com/api
+REACT_APP_SUPABASE_URL=<your-supabase-url>
+REACT_APP_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+
+# Feature Flags
+REACT_APP_ENABLE_TRY_ON=true
+REACT_APP_ENABLE_COD_RULES=true
+```
+
+## Deployment Steps
+
+### Backend Deployment (Heroku)
+
+1. Create a new Heroku app:
+
+```bash
+heroku create rifolks-drifts-backend
+```
+
+2. Add PostgreSQL addon:
+
+```bash
+heroku addons:create heroku-postgresql:hobby-dev
+```
+
+3. Set environment variables:
+
+```bash
+heroku config:set JWT_SECRET=<your-secret>
+heroku config:set SUPABASE_URL=<your-url>
+# ... set other variables
+```
+
+4. Deploy the application:
+
+```bash
+git push heroku main
+```
+
+5. Run database migrations:
+
+```bash
+heroku run npm run migrate
+```
+
+### Frontend Deployment (Netlify)
+
+1. Build the application locally:
+
+```bash
+cd frontend
+npm run build
+```
+
+2. Deploy using Netlify CLI:
+
+```bash
+netlify deploy --prod
+```
+
+Or connect your GitHub repository to Netlify for automatic deployments.
 
 ## Post-Deployment Checklist
 
-1. Frontend
+### Backend
 
-    - [ ] Verify all environment variables are set
-    - [ ] Test authentication flow
-    - [ ] Test product listing and details
-    - [ ] Test cart functionality
-    - [ ] Test checkout process
-    - [ ] Verify Stripe integration
-    - [ ] Check responsive design
-    - [ ] Verify image loading
-    - [ ] Test API endpoints
+-   [ ] Database migrations completed successfully
+-   [ ] Environment variables properly set
+-   [ ] CORS configured correctly
+-   [ ] Rate limiting working
+-   [ ] Logging system operational
+-   [ ] API endpoints responding correctly
 
-2. Backend
+### Frontend
 
-    - [ ] Verify all environment variables are set
-    - [ ] Test database connections
-    - [ ] Verify API endpoints
-    - [ ] Test authentication
-    - [ ] Test file uploads
-    - [ ] Verify Stripe webhooks
-    - [ ] Check error handling
-    - [ ] Monitor logs for issues
+-   [ ] Build completed without errors
+-   [ ] Environment variables properly set
+-   [ ] API calls working correctly
+-   [ ] Static assets loading properly
+-   [ ] Routing working correctly
+-   [ ] COD features functioning as expected
 
-3. Security
+### General
 
-    - [ ] Verify HTTPS is enabled
-    - [ ] Check CORS configuration
-    - [ ] Verify API rate limiting
-    - [ ] Test input validation
-    - [ ] Check error messages
-    - [ ] Verify secure headers
+-   [ ] SSL certificates valid
+-   [ ] Error monitoring set up
+-   [ ] Performance monitoring configured
+-   [ ] Backup system in place
+-   [ ] Security headers configured
+-   [ ] Rate limiting working
 
-4. Performance
-    - [ ] Check loading times
-    - [ ] Verify image optimization
-    - [ ] Test caching
-    - [ ] Monitor API response times
-    - [ ] Check database query performance
+## Monitoring and Maintenance
+
+### Logging
+
+-   Backend logs: `heroku logs --tail`
+-   Frontend logs: Netlify dashboard
+
+### Performance Monitoring
+
+-   Use Heroku metrics for backend
+-   Netlify analytics for frontend
+-   Set up error tracking (e.g., Sentry)
+
+### Backup
+
+-   Database backups configured
+-   Regular backup schedule in place
+-   Backup restoration tested
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. Frontend
+1. CORS errors
 
-    - CORS errors: Check backend CORS configuration
-    - Environment variables: Verify all variables are set in Netlify
-    - Build failures: Check build logs and dependencies
+    - Check ALLOWED_ORIGINS configuration
+    - Verify frontend API URL
 
-2. Backend
-    - Database connection: Verify Supabase credentials
-    - API errors: Check logs and error handling
-    - Memory issues: Monitor Heroku dyno usage
+2. Database connection issues
+
+    - Verify DATABASE_URL
+    - Check database credentials
+    - Ensure database is running
+
+3. Build failures
+    - Check Node.js version
+    - Verify all dependencies
+    - Check for environment variables
 
 ### Support
 
--   Frontend issues: Check Netlify deployment logs
--   Backend issues: Check Heroku logs
--   Database issues: Check Supabase dashboard
--   Payment issues: Check Stripe dashboard
+For deployment issues:
+
+-   Check Heroku logs
+-   Review Netlify build logs
+-   Contact support if needed
