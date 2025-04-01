@@ -45,6 +45,10 @@ app.get("/health", async (req, res) => {
 		res.status(500).json({
 			status: "unhealthy",
 			error: error.message,
+			details:
+				process.env.NODE_ENV === "development"
+					? error.stack
+					: undefined,
 		});
 	}
 });
@@ -99,10 +103,18 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, "0.0.0.0", () => {
-	logger.info(`Server running on port ${PORT}`);
-	logger.info(`Environment: ${process.env.NODE_ENV}`);
-	logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
+const server = app.listen(PORT, "0.0.0.0", async () => {
+	try {
+		// Test database connection on startup
+		await prisma.$queryRaw`SELECT 1`;
+		logger.info(`Server running on port ${PORT}`);
+		logger.info(`Environment: ${process.env.NODE_ENV}`);
+		logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
+		logger.info("Database connection successful");
+	} catch (error) {
+		logger.error("Failed to connect to database:", error);
+		process.exit(1);
+	}
 });
 
 // Handle server shutdown gracefully
