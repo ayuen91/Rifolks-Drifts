@@ -1,16 +1,26 @@
 const { execSync } = require("child_process");
 const { logger } = require("../utils/logger");
+const path = require("path");
+const dotenv = require("dotenv");
+
+// Load environment variables from .env file if it exists
+const envPath = path.resolve(__dirname, "../.env");
+dotenv.config({ path: envPath });
 
 async function runMigrations() {
 	try {
 		// Validate required environment variables
 		const requiredEnvVars = ["DATABASE_URL", "DIRECT_URL"];
-		for (const envVar of requiredEnvVars) {
-			if (!process.env[envVar]) {
-				throw new Error(
-					`Missing required environment variable: ${envVar}`
-				);
-			}
+		const missingVars = requiredEnvVars.filter(
+			(varName) => !process.env[varName]
+		);
+
+		if (missingVars.length > 0) {
+			throw new Error(
+				`Missing required environment variables: ${missingVars.join(
+					", "
+				)}`
+			);
 		}
 
 		// First, check if we can connect to the database
@@ -52,6 +62,7 @@ async function runMigrations() {
 			env: {
 				DATABASE_URL: process.env.DATABASE_URL ? "present" : "missing",
 				DIRECT_URL: process.env.DIRECT_URL ? "present" : "missing",
+				NODE_ENV: process.env.NODE_ENV,
 			},
 		});
 
