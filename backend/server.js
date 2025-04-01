@@ -6,11 +6,11 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const { createClient } = require("@supabase/supabase-js");
-const { errorHandler } = require("./middleware/errorHandler");
 const { logger } = require("./utils/logger");
+const prisma = require("./utils/prisma");
 
 // Validate required environment variables
-const requiredEnvVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY"];
+const requiredEnvVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "DATABASE_URL"];
 for (const envVar of requiredEnvVars) {
 	if (!process.env[envVar]) {
 		logger.error(`Missing required environment variable: ${envVar}`);
@@ -26,18 +26,32 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
-// Basic middleware for all routes
+// Health check endpoint - placed before other middleware
+app.get("/health", async (req, res) => {
+	try {
+		// Test database connection
+		await prisma.$queryRaw`SELECT 1`;
+
+		res.status(200).json({
+			status: "healthy",
+			timestamp: new Date().toISOString(),
+			uptime: process.uptime(),
+			environment: process.env.NODE_ENV || "development",
+			port: process.env.PORT,
+			database: "connected",
+		});
+	} catch (error) {
+		logger.error("Health check error:", error);
+		res.status(500).json({
+			status: "unhealthy",
+			error: error.message,
+		});
+	}
+});
+
+// Basic middleware
 app.use(express.json());
 app.use(morgan("combined"));
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-	res.status(200).json({
-		status: "healthy",
-		timestamp: new Date().toISOString(),
-		uptime: process.uptime(),
-	});
-});
 
 // Security middleware
 app.use(
@@ -85,29 +99,30 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () => {
-	logger.info(`Server is running on port ${PORT}`);
-	logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+const server = app.listen(PORT, "0.0.0.0", () => {
+	logger.info(`Server running on port ${PORT}`);
+	logger.info(`Environment: ${process.env.NODE_ENV}`);
 	logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
 });
 
-// Handle uncaught exceptions
-process.on("uncaughtException", (err) => {
-	logger.error("Uncaught Exception:", err);
-	process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-	logger.error("Unhandled Rejection:", err);
-	process.exit(1);
-});
-
-// Graceful shutdown
-process.on("SIGTERM", () => {
+// Handle server shutdown gracefully
+process.on("SIGTERM", async () => {
 	logger.info("SIGTERM received. Shutting down gracefully...");
+	await prisma.$disconnect();
 	server.close(() => {
 		logger.info("Server closed");
 		process.exit(0);
 	});
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+	logger.error("Uncaught Exception:", error);
+	process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+	logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+	process.exit(1);
 });
