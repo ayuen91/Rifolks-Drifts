@@ -10,12 +10,21 @@ async function runMigrations() {
 			process.env.DATABASE_URL?.replace(/:[^@]+@/, ":****@")
 		);
 
+		// Set up direct URL for migrations
+		const directUrl = process.env.DATABASE_URL.replace(
+			"?pgbouncer=true",
+			""
+		);
+		process.env.DIRECT_URL = directUrl;
+
 		// Try to connect to the database
+		logger.info("Attempting to connect to database...");
 		execSync("npx prisma db pull", {
 			stdio: "inherit",
 			env: {
 				...process.env,
 				DATABASE_URL: process.env.DATABASE_URL,
+				DIRECT_URL: directUrl,
 			},
 		});
 
@@ -26,6 +35,7 @@ async function runMigrations() {
 			env: {
 				...process.env,
 				DATABASE_URL: process.env.DATABASE_URL,
+				DIRECT_URL: directUrl,
 			},
 		});
 
@@ -47,6 +57,7 @@ async function runMigrations() {
 				3. Network allows connections to the database port
 				4. Database credentials are correct
 				5. Project reference and password are correct
+				6. Direct connection is available for migrations
 			`);
 		}
 
