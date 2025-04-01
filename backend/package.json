@@ -9,7 +9,7 @@
 		"test": "jest",
 		"lint": "eslint .",
 		"format": "prettier --write .",
-		"migrate": "node -e \"const { execSync } = require('child_process'); const maxRetries = 5; let retries = 0; while (retries < maxRetries) { try { console.log('Attempting database migration...'); execSync('npx prisma migrate deploy', { stdio: 'inherit' }); console.log('Migration successful!'); process.exit(0); } catch (error) { retries++; if (retries === maxRetries) { console.error('Migration failed after', maxRetries, 'attempts'); process.exit(1); } console.log('Migration attempt failed, retrying in 5 seconds...'); execSync('sleep 5'); } }\"",
+		"migrate": "node -e \"const { execSync } = require('child_process'); const maxRetries = 5; let retries = 0; const delay = ms => new Promise(resolve => setTimeout(resolve, ms)); while (retries < maxRetries) { try { console.log('Attempting database migration...'); execSync('npx prisma migrate deploy --accept-data-loss', { stdio: 'inherit' }); console.log('Migration successful!'); process.exit(0); } catch (error) { retries++; if (retries === maxRetries) { console.error('Migration failed after', maxRetries, 'attempts'); process.exit(1); } console.log('Migration attempt failed, retrying in 10 seconds...'); await delay(10000); } }\"",
 		"migrate:dev": "prisma migrate dev",
 		"migrate:reset": "prisma migrate reset",
 		"generate": "prisma generate",
