@@ -26,7 +26,20 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
-// Middleware
+// Basic middleware for all routes
+app.use(express.json());
+app.use(morgan("combined"));
+
+// Health check endpoint - placed before other middleware
+app.get("/health", (req, res) => {
+	res.status(200).json({
+		status: "healthy",
+		timestamp: new Date().toISOString(),
+		environment: process.env.NODE_ENV || "development",
+	});
+});
+
+// Security middleware
 app.use(
 	helmet({
 		crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -43,17 +56,7 @@ const corsOptions = {
 	allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// Apply CORS to all routes except healthcheck
-app.use((req, res, next) => {
-	if (req.path === "/health") {
-		next();
-	} else {
-		cors(corsOptions)(req, res, next);
-	}
-});
-
-app.use(express.json());
-app.use(morgan("combined"));
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -68,30 +71,21 @@ app.use("/api/products", require("./routes/productRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/cod", require("./routes/codRoutes"));
 
-// Health check endpoint
-app.get("/health", async (req, res) => {
-	try {
-		// Basic health check without database dependency
-		res.status(200).json({
-			status: "healthy",
-			timestamp: new Date().toISOString(),
-			environment: process.env.NODE_ENV || "development",
-		});
-	} catch (error) {
-		logger.error("Health check failed:", error);
-		res.status(500).json({
-			status: "unhealthy",
-			error: error.message,
-		});
-	}
-});
-
 // Error handling middleware
 app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
 	logger.info(`Server running on port ${PORT}`);
 	logger.info(`Environment: ${process.env.NODE_ENV}`);
+});
+
+// Handle server shutdown gracefully
+process.on("SIGTERM", () => {
+	logger.info("SIGTERM received. Shutting down gracefully...");
+	server.close(() => {
+		logger.info("Server closed");
+		process.exit(0);
+	});
 });
