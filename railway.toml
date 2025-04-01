@@ -6,11 +6,11 @@ watchPatterns = ["/backend/**/*"]
 [deploy]
 startCommand = "cd backend && NODE_ENV=production npm run migrate && PORT=$PORT npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 600
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 healthcheckInterval = 45
-startupTimeout = 900
+startupTimeout = 120
 
 [deploy.envVars]
 NODE_ENV = "production"

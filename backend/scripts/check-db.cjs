@@ -1,22 +1,19 @@
-const { PrismaClient } = require('@prisma/client');
-const { DATABASE_URL } = process.env;
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: DATABASE_URL,
-    },
-  },
-});
+const { Pool } = require('pg');
+const { DIRECT_URL } = process.env;
 
 async function checkDbConnection() {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    const pool = new Pool({
+      connectionString: DIRECT_URL,
+    });
+
+    const client = await pool.connect();
+    const result = await client.query('SELECT 1');
     console.log('Database connection successful!');
-    await prisma.$disconnect();
+    client.release();
+    await pool.end();
   } catch (error) {
-    console.error('Database connection failed:', error.message);
-    await prisma.$disconnect();
+    console.error('Database connection failed:', error);
     process.exit(1);
   }
 }
