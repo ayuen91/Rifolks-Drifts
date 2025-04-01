@@ -5,11 +5,29 @@ async function runMigrations() {
 	try {
 		// First, check if we can connect to the database
 		logger.info("Checking database connection...");
-		execSync("npx prisma db pull", { stdio: "inherit" });
+		logger.info(
+			"Database URL:",
+			process.env.DATABASE_URL?.replace(/:[^@]+@/, ":****@")
+		);
+
+		// Try to connect to the database
+		execSync("npx prisma db pull", {
+			stdio: "inherit",
+			env: {
+				...process.env,
+				DATABASE_URL: process.env.DATABASE_URL,
+			},
+		});
 
 		// Then run migrations
 		logger.info("Running database migrations...");
-		execSync("npx prisma migrate deploy", { stdio: "inherit" });
+		execSync("npx prisma migrate deploy", {
+			stdio: "inherit",
+			env: {
+				...process.env,
+				DATABASE_URL: process.env.DATABASE_URL,
+			},
+		});
 
 		logger.info("Database migrations completed successfully");
 	} catch (error) {
@@ -28,6 +46,7 @@ async function runMigrations() {
 				2. Database server is running and accessible
 				3. Network allows connections to the database port
 				4. Database credentials are correct
+				5. Project reference and password are correct
 			`);
 		}
 
