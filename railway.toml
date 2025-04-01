@@ -28,8 +28,4 @@ LOG_LEVEL = "info"
 interval = "30s"
 timeout = "600s"
 retries = 3
-startPeriod = "60s"
-
-[deploy.railway]
-buildCommand = "cd backend && npm install --omit=dev && npx prisma generate"
-startCommand = "cd backend && NODE_ENV=production PORT=$PORT npm run migrate && npm start" 
+startPeriod = "60s" 
