@@ -26,12 +26,11 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
-// Health check endpoint - placed before other middleware
+// Health check endpoint - placed before any middleware
 app.get("/health", async (req, res) => {
 	try {
 		// Test database connection
 		await prisma.$queryRaw`SELECT 1`;
-
 		res.status(200).json({
 			status: "healthy",
 			timestamp: new Date().toISOString(),
