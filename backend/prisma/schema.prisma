@@ -3,13 +3,12 @@
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DIRECT_URL")
-  directUrl = env("DIRECT_URL") // Used for migrations
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
   relationMode = "prisma"
 }
 
@@ -26,26 +25,33 @@ model User {
 }
 
 model Product {
-  id          String    @id @default(uuid())
+  id          Int      @id @default(autoincrement())
   name        String
-  description String?
+  description String
   price       Float
-  stock       Int       @default(0)
-  imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  orderItems  OrderItem[]
+  category    String
+  images      String[]
+  stock       Int
+  sizes       String[]
+  colors      String[]
+  gender      String
+  rating      Float    @default(0)
+  numReviews  Int      @default(0)
+  featured    Boolean  @default(false)
+  discount    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  status      String      @default("pending")
-  totalAmount Float
-  items       OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  items         Json
+  totalAmount   Float
+  status        String   @default("pending")
+  paymentMethod String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model OrderItem {

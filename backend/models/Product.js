@@ -1,93 +1,55 @@
-const mongoose = require("mongoose");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
-const productSchema = new mongoose.Schema(
-	{
-		name: {
-			type: String,
-			required: true,
-			trim: true,
-		},
-		description: {
-			type: String,
-			required: true,
-		},
-		price: {
-			type: Number,
-			required: true,
-			min: 0,
-		},
-		category: {
-			type: mongoose.Schema.Types.ObjectId,
-			ref: "Category",
-			required: true,
-		},
-		images: [
-			{
-				type: String,
-				required: true,
+class Product {
+	static async findAll(where = {}, skip = 0, take = 12) {
+		return prisma.product.findMany({
+			where,
+			skip,
+			take,
+			orderBy: {
+				createdAt: "desc",
 			},
-		],
-		stock: {
-			type: Number,
-			required: true,
-			min: 0,
-		},
-		sizes: [
-			{
-				type: String,
-				enum: ["XS", "S", "M", "L", "XL", "XXL"],
-			},
-		],
-		colors: [
-			{
-				type: String,
-			},
-		],
-		gender: {
-			type: String,
-			enum: ["men", "women", "unisex"],
-			required: true,
-		},
-		rating: {
-			type: Number,
-			default: 0,
-			min: 0,
-			max: 5,
-		},
-		numReviews: {
-			type: Number,
-			default: 0,
-		},
-		reviews: [
-			{
-				user: {
-					type: mongoose.Schema.Types.ObjectId,
-					ref: "User",
-				},
-				name: String,
-				rating: Number,
-				comment: String,
-			},
-		],
-		featured: {
-			type: Boolean,
-			default: false,
-		},
-		discount: {
-			type: Number,
-			default: 0,
-			min: 0,
-			max: 100,
-		},
-	},
-	{
-		timestamps: true,
+		});
 	}
-);
 
-// Index for search functionality
-productSchema.index({ name: "text", description: "text" });
+	static async findById(id) {
+		return prisma.product.findUnique({
+			where: { id: parseInt(id) },
+		});
+	}
 
-const Product = mongoose.model("Product", productSchema);
+	static async create(productData) {
+		return prisma.product.create({
+			data: productData,
+		});
+	}
+
+	static async update(id, productData) {
+		return prisma.product.update({
+			where: { id: parseInt(id) },
+			data: productData,
+		});
+	}
+
+	static async delete(id) {
+		return prisma.product.delete({
+			where: { id: parseInt(id) },
+		});
+	}
+
+	static async count(where = {}) {
+		return prisma.product.count({ where });
+	}
+
+	static async findTopRated() {
+		return prisma.product.findMany({
+			orderBy: {
+				rating: "desc",
+			},
+			take: 5,
+		});
+	}
+}
 
 module.exports = Product;
