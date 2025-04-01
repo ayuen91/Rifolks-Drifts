@@ -3,21 +3,27 @@
   publish = "build"
 
 [[redirects]]
-  from = "/api/*"
-  to = "https://your-heroku-app.herokuapp.com/api/:splat"
+  from = "/*"
+  to = "/index.html"
   status = 200
 
 [build.environment]
-  NODE_VERSION = "18.17.0"
-
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
+  NODE_VERSION = "18"
 
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self' https://*.supabase.co https://*.stripe.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.supabase.co https://*.stripe.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://*.stripe.com;" 
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://rifolks-drifts.railway.app;"
+
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://rifolks-drifts.railway.app/api/:splat"
+  status = 200
+  force = true 
