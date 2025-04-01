@@ -5,10 +5,10 @@ watchPatterns = ["/backend/**/*"]
 [deploy]
 startCommand = "cd backend && NODE_ENV=production PORT=$PORT npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 600
 restartPolicyType = "on_failure"
-healthcheckInterval = 30
-startupTimeout = 300
+healthcheckInterval = 15
+startupTimeout = 600
 
 [deploy.envVars]
 NODE_ENV = "production"
