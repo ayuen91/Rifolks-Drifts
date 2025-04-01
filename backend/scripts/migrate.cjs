@@ -1,5 +1,6 @@
 const { execSync } = require("child_process");
 const { setTimeout } = require("timers/promises");
+require("dotenv").config();
 
 const maxRetries = parseInt(process.env.DATABASE_CONNECTION_RETRIES || "5");
 const retryDelay = parseInt(
@@ -15,8 +16,14 @@ async function runMigration() {
 					retries + 1
 				}/${maxRetries})...`
 			);
-			// Use DIRECT_URL for migrations to avoid connection pooling issues
-			execSync("DATABASE_URL=$DIRECT_URL npx prisma migrate deploy", {
+
+			// Ensure environment variables are set
+			if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+				throw new Error("Database URLs are not properly configured");
+			}
+
+			// Use DIRECT_URL for migrations
+			execSync("npx prisma migrate deploy", {
 				stdio: "inherit",
 				env: {
 					...process.env,
