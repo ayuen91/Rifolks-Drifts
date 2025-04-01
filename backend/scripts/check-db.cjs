@@ -8,7 +8,14 @@ const retryDelay = parseInt(
 let retries = 0;
 
 async function checkDatabase() {
-	const prisma = new PrismaClient();
+	const prisma = new PrismaClient({
+		log: ["query", "error", "warn"],
+		datasources: {
+			db: {
+				url: process.env.DATABASE_URL,
+			},
+		},
+	});
 
 	while (retries < maxRetries) {
 		try {
@@ -23,6 +30,11 @@ async function checkDatabase() {
 			process.exit(0);
 		} catch (error) {
 			retries++;
+			console.error(
+				`Connection attempt ${retries} failed:`,
+				error.message
+			);
+
 			if (retries === maxRetries) {
 				console.error(
 					"Database connection failed after",
@@ -32,6 +44,7 @@ async function checkDatabase() {
 				await prisma.$disconnect();
 				process.exit(1);
 			}
+
 			console.log(
 				`Database connection failed, retrying in ${
 					retryDelay / 1000

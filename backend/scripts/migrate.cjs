@@ -15,17 +15,31 @@ async function runMigration() {
 					retries + 1
 				}/${maxRetries})...`
 			);
-			execSync("npx prisma migrate deploy --accept-data-loss", {
-				stdio: "inherit",
-			});
+			// Use DIRECT_URL for migrations to avoid connection pooling issues
+			execSync(
+				"DATABASE_URL=$DIRECT_URL npx prisma migrate deploy --accept-data-loss",
+				{
+					stdio: "inherit",
+					env: {
+						...process.env,
+						DATABASE_URL: process.env.DIRECT_URL,
+					},
+				}
+			);
 			console.log("Migration successful!");
 			process.exit(0);
 		} catch (error) {
 			retries++;
+			console.error(
+				`Migration attempt ${retries} failed:`,
+				error.message
+			);
+
 			if (retries === maxRetries) {
 				console.error("Migration failed after", maxRetries, "attempts");
 				process.exit(1);
 			}
+
 			console.log(
 				`Migration attempt failed, retrying in ${
 					retryDelay / 1000
