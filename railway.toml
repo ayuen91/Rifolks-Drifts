@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && npm ci --omit=dev && npx prisma generate && cd ../frontend && npm ci --omit=dev"
+buildCommand = "cd backend && npm ci --omit=dev && npx prisma generate"
 watchPatterns = ["/backend/**/*"]
 
 [deploy]
-startCommand = "cd backend && NODE_ENV=production PORT=$PORT npm run migrate && npm start"
+startCommand = "cd backend && npm run migrate && NODE_ENV=production PORT=$PORT npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 600
 restartPolicyType = "on_failure"

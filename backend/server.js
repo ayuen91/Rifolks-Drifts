@@ -26,41 +26,73 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
+// Connection state tracking
+let isDatabaseConnected = false;
+let isSupabaseConnected = false;
+
 // Health check endpoint - placed before any middleware
 app.get("/health", async (req, res) => {
+	const healthStatus = {
+		status: "healthy",
+		timestamp: new Date().toISOString(),
+		uptime: process.uptime(),
+		environment: process.env.NODE_ENV || "development",
+		port: process.env.PORT,
+		database: "disconnected",
+		supabase: "disconnected",
+		memory: process.memoryUsage(),
+		nodeVersion: process.version,
+		details: {},
+	};
+
 	try {
-		// Test database connection
-		await prisma.$queryRaw`SELECT 1`;
-
-		// Test Supabase connection
-		const { data, error } = await supabase
-			.from("users")
-			.select("count")
-			.limit(1);
-		if (error) throw error;
-
-		res.status(200).json({
-			status: "healthy",
-			timestamp: new Date().toISOString(),
-			uptime: process.uptime(),
-			environment: process.env.NODE_ENV || "development",
-			port: process.env.PORT,
-			database: "connected",
-			supabase: "connected",
-			memory: process.memoryUsage(),
-			nodeVersion: process.version,
-		});
+		// Test database connection with timeout
+		const dbPromise = prisma.$queryRaw`SELECT 1`;
+		const dbTimeout = new Promise((_, reject) =>
+			setTimeout(
+				() => reject(new Error("Database connection timeout")),
+				5000
+			)
+		);
+		await Promise.race([dbPromise, dbTimeout]);
+		healthStatus.database = "connected";
+		isDatabaseConnected = true;
 	} catch (error) {
-		logger.error("Health check error:", error);
-		res.status(500).json({
-			status: "unhealthy",
-			error: error.message,
-			details:
-				process.env.NODE_ENV === "development"
-					? error.stack
-					: undefined,
-			timestamp: new Date().toISOString(),
-		});
+		healthStatus.database = "error";
+		healthStatus.details.databaseError = error.message;
+		isDatabaseConnected = false;
+		logger.error("Database health check error:", error);
+	}
+
+	try {
+		// Test Supabase connection with timeout
+		const supabasePromise = supabase.from("users").select("count").limit(1);
+		const supabaseTimeout = new Promise((_, reject) =>
+			setTimeout(
+				() => reject(new Error("Supabase connection timeout")),
+				5000
+			)
+		);
+		const { data, error } = await Promise.race([
+			supabasePromise,
+			supabaseTimeout,
+		]);
+		if (error) throw error;
+		healthStatus.supabase = "connected";
+		isSupabaseConnected = true;
+	} catch (error) {
+		healthStatus.supabase = "error";
+		healthStatus.details.supabaseError = error.message;
+		isSupabaseConnected = false;
+		logger.error("Supabase health check error:", error);
+	}
+
+	// Determine overall health status
+	if (!isDatabaseConnected || !isSupabaseConnected) {
+		healthStatus.status = "unhealthy";
+		res.status(503).json(healthStatus);
+	} else {
+		res.status(200).json(healthStatus);
 	}
 });
 
@@ -116,12 +148,27 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", async () => {
 	try {
-		// Test database connection on startup
-		await prisma.$queryRaw`SELECT 1`;
+		// Test database connection on startup with retries
+		let retries = 3;
+		while (retries > 0) {
+			try {
+				await prisma.$queryRaw`SELECT 1`;
+				isDatabaseConnected = true;
+				logger.info("Database connection successful");
+				break;
+			} catch (error) {
+				retries--;
+				if (retries === 0) throw error;
+				logger.warn(
+					`Database connection attempt failed, retrying... (${retries} attempts left)`
+				);
+				await new Promise((resolve) => setTimeout(resolve, 5000));
+			}
+		}
+
 		logger.info(`Server running on port ${PORT}`);
 		logger.info(`Environment: ${process.env.NODE_ENV}`);
 		logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
-		logger.info("Database connection successful");
 	} catch (error) {
 		logger.error("Failed to connect to database:", error);
 		process.exit(1);
