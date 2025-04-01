@@ -117,6 +117,18 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 	}
 });
 
+// Handle server errors
+server.on("error", (error) => {
+	if (error.code === "EADDRINUSE") {
+		logger.error(
+			`Port ${PORT} is already in use. Please try a different port.`
+		);
+		process.exit(1);
+	} else {
+		logger.error("Server error:", error);
+	}
+});
+
 // Handle server shutdown gracefully
 process.on("SIGTERM", async () => {
 	logger.info("SIGTERM received. Shutting down gracefully...");

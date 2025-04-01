@@ -3,19 +3,22 @@ const { logger } = require("../utils/logger");
 
 async function runMigrations() {
 	try {
+		// Validate required environment variables
+		const requiredEnvVars = ["DATABASE_URL", "DIRECT_URL"];
+		for (const envVar of requiredEnvVars) {
+			if (!process.env[envVar]) {
+				throw new Error(
+					`Missing required environment variable: ${envVar}`
+				);
+			}
+		}
+
 		// First, check if we can connect to the database
 		logger.info("Checking database connection...");
 		logger.info(
 			"Database URL:",
 			process.env.DATABASE_URL?.replace(/:[^@]+@/, ":****@")
 		);
-
-		// Set up direct URL for migrations
-		const directUrl = process.env.DATABASE_URL.replace(
-			"?pgbouncer=true",
-			""
-		);
-		process.env.DIRECT_URL = directUrl;
 
 		// Try to connect to the database
 		logger.info("Attempting to connect to database...");
@@ -24,7 +27,7 @@ async function runMigrations() {
 			env: {
 				...process.env,
 				DATABASE_URL: process.env.DATABASE_URL,
-				DIRECT_URL: directUrl,
+				DIRECT_URL: process.env.DIRECT_URL,
 			},
 		});
 
@@ -35,7 +38,7 @@ async function runMigrations() {
 			env: {
 				...process.env,
 				DATABASE_URL: process.env.DATABASE_URL,
-				DIRECT_URL: directUrl,
+				DIRECT_URL: process.env.DIRECT_URL,
 			},
 		});
 
@@ -46,6 +49,10 @@ async function runMigrations() {
 			message: error.message,
 			code: error.code,
 			stack: error.stack,
+			env: {
+				DATABASE_URL: process.env.DATABASE_URL ? "present" : "missing",
+				DIRECT_URL: process.env.DIRECT_URL ? "present" : "missing",
+			},
 		});
 
 		// If it's a connection error, provide more specific guidance
