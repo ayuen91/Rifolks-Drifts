@@ -1,21 +1,48 @@
-const { Pool } = require('pg');
-const { DIRECT_URL } = process.env;
+const { PrismaClient } = require("@prisma/client");
+const { setTimeout } = require("timers/promises");
 
-async function checkDbConnection() {
-  try {
-    const pool = new Pool({
-      connectionString: DIRECT_URL,
-    });
+const maxRetries = parseInt(process.env.DATABASE_CONNECTION_RETRIES || "5");
+const retryDelay = parseInt(
+	process.env.DATABASE_CONNECTION_RETRY_DELAY || "5000"
+);
+let retries = 0;
 
-    const client = await pool.connect();
-    const result = await client.query('SELECT 1');
-    console.log('Database connection successful!');
-    client.release();
-    await pool.end();
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    process.exit(1);
-  }
+async function checkDatabase() {
+	const prisma = new PrismaClient();
+
+	while (retries < maxRetries) {
+		try {
+			console.log(
+				`Checking database connection (attempt ${
+					retries + 1
+				}/${maxRetries})...`
+			);
+			await prisma.$queryRaw`SELECT 1`;
+			console.log("Database connection successful!");
+			await prisma.$disconnect();
+			process.exit(0);
+		} catch (error) {
+			retries++;
+			if (retries === maxRetries) {
+				console.error(
+					"Database connection failed after",
+					maxRetries,
+					"attempts"
+				);
+				await prisma.$disconnect();
+				process.exit(1);
+			}
+			console.log(
+				`Database connection failed, retrying in ${
+					retryDelay / 1000
+				} seconds...`
+			);
+			await setTimeout(retryDelay);
+		}
+	}
 }
 
-checkDbConnection();
+checkDatabase().catch(async (error) => {
+	console.error("Database check failed:", error);
+	process.exit(1);
+});
