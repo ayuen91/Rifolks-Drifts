@@ -30,69 +30,32 @@ const supabase = createClient(
 let isDatabaseConnected = false;
 let isSupabaseConnected = false;
 
-// Health check endpoint - placed before any middleware
+// Health check endpoint
 app.get("/health", async (req, res) => {
-	const healthStatus = {
-		status: "healthy",
-		timestamp: new Date().toISOString(),
-		uptime: process.uptime(),
-		environment: process.env.NODE_ENV || "development",
-		port: process.env.PORT,
-		database: "disconnected",
-		supabase: "disconnected",
-		memory: process.memoryUsage(),
-		nodeVersion: process.version,
-		details: {},
-	};
-
 	try {
-		// Test database connection with timeout
-		const dbPromise = prisma.$queryRaw`SELECT 1`;
-		const dbTimeout = new Promise((_, reject) =>
-			setTimeout(
-				() => reject(new Error("Database connection timeout")),
-				10000
-			)
-		);
-		await Promise.race([dbPromise, dbTimeout]);
-		healthStatus.database = "connected";
-		isDatabaseConnected = true;
-	} catch (error) {
-		healthStatus.database = "error";
-		healthStatus.details.databaseError = error.message;
-		isDatabaseConnected = false;
-		logger.error("Database health check error:", error);
-	}
+		// Check database connection
+		await prisma.$queryRaw`SELECT 1`;
 
-	try {
-		// Test Supabase connection with timeout
-		const supabasePromise = supabase.from("users").select("count").limit(1);
-		const supabaseTimeout = new Promise((_, reject) =>
-			setTimeout(
-				() => reject(new Error("Supabase connection timeout")),
-				5000
-			)
-		);
-		const { data, error } = await Promise.race([
-			supabasePromise,
-			supabaseTimeout,
-		]);
+		// Check Supabase connection
+		const { data, error } = await supabase
+			.from("users")
+			.select("count")
+			.limit(1);
 		if (error) throw error;
-		healthStatus.supabase = "connected";
-		isSupabaseConnected = true;
-	} catch (error) {
-		healthStatus.supabase = "error";
-		healthStatus.details.supabaseError = error.message;
-		isSupabaseConnected = false;
-		logger.error("Supabase health check error:", error);
-	}
 
-	// Determine overall health status
-	if (!isDatabaseConnected || !isSupabaseConnected) {
-		healthStatus.status = "unhealthy";
-		res.status(503).json(healthStatus);
-	} else {
-		res.status(200).json(healthStatus);
+		res.status(200).json({
+			status: "healthy",
+			timestamp: new Date().toISOString(),
+			database: "connected",
+			supabase: "connected",
+		});
+	} catch (error) {
+		console.error("Health check failed:", error);
+		res.status(503).json({
+			status: "unhealthy",
+			timestamp: new Date().toISOString(),
+			error: error.message,
+		});
 	}
 });
 

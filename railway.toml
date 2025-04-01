@@ -6,11 +6,11 @@ watchPatterns = ["/backend/**/*"]
 [deploy]
 startCommand = "cd backend && NODE_ENV=production npm run migrate && PORT=$PORT npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
-healthcheckInterval = 45
-startupTimeout = 120
+healthcheckInterval = 30
+startupTimeout = 180
 
 [deploy.envVars]
 NODE_ENV = "production"
@@ -28,7 +28,7 @@ DATABASE_CONNECTION_RETRY_DELAY = "5000"
 PRISMA_CLIENT_ENGINE_TYPE = "dataproxy"
 
 [deploy.healthcheck]
-interval = "45s"
-timeout = "600s"
-retries = 5
-startPeriod = "120s" 
+interval = "30s"
+timeout = "30s"
+retries = 3
+startPeriod = "180s" 
