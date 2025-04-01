@@ -15,7 +15,8 @@
 		"generate": "prisma generate",
 		"studio": "prisma studio",
 		"build": "prisma generate && tsc",
-		"postinstall": "prisma generate"
+		"postinstall": "prisma generate",
+		"check-db": "node scripts/check-db.cjs"
 	},
 	"engines": {
 		"node": ">=18.0.0"

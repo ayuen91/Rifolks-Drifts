@@ -51,7 +51,7 @@ app.get("/health", async (req, res) => {
 		const dbTimeout = new Promise((_, reject) =>
 			setTimeout(
 				() => reject(new Error("Database connection timeout")),
-				5000
+				10000
 			)
 		);
 		await Promise.race([dbPromise, dbTimeout]);
