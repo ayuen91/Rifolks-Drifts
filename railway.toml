@@ -1,12 +1,19 @@
 [build]
-buildCommand = "npm run build"
+buildCommand = "cd backend && npm install"
 watchPatterns = ["/backend/**/*"]
 
 [deploy]
-startCommand = "npm start"
+startCommand = "cd backend && npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 
 [deploy.envVars]
-NODE_ENV = "production" 
+NODE_ENV = "production"
+PORT = "3000"
+SUPABASE_URL = "https://asopomvrogpnirgguquy.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzb3BvbXZyb2dwbmlyZ2d1cXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMzMzE4OTksImV4cCI6MjA1ODkwNzg5OX0.GZifjJopG_Sd3e_4XKtpVH-qPkAeqQeRe_7x5Mn9-rI"
+ALLOWED_ORIGINS = "https://rifolks-drifts.netlify.app,http://localhost:3000"
+RATE_LIMIT_WINDOW_MS = "900000"
+RATE_LIMIT_MAX_REQUESTS = "100"
+LOG_LEVEL = "info" 

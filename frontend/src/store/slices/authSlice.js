@@ -51,6 +51,52 @@ export const checkAuth = createAsyncThunk(
 	}
 );
 
+export const updateProfile = createAsyncThunk(
+	"auth/updateProfile",
+	async ({ userData }, { rejectWithValue }) => {
+		try {
+			const { data, error } = await supabase.auth.updateUser({
+				data: userData,
+			});
+			if (error) throw error;
+			return data.user;
+		} catch (error) {
+			return rejectWithValue(error.message);
+		}
+	}
+);
+
+export const getMyOrders = createAsyncThunk(
+	"auth/getMyOrders",
+	async (_, { rejectWithValue }) => {
+		try {
+			const { data, error } = await supabase
+				.from("orders")
+				.select("*")
+				.order("created_at", { ascending: false });
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			return rejectWithValue(error.message);
+		}
+	}
+);
+
+export const loginAdmin = createAsyncThunk(
+	"auth/loginAdmin",
+	async ({ email, password }, { rejectWithValue }) => {
+		try {
+			const { user, session } = await signIn(email, password);
+			if (!user?.user_metadata?.is_admin) {
+				throw new Error("Unauthorized access");
+			}
+			return { user, token: session.access_token };
+		} catch (error) {
+			return rejectWithValue(error.message);
+		}
+	}
+);
+
 const initialState = {
 	user: null,
 	token: null,
@@ -120,6 +166,48 @@ const authSlice = createSlice({
 				state.user = null;
 				state.token = null;
 				state.isAuthenticated = false;
+			})
+			// Update Profile
+			.addCase(updateProfile.pending, (state) => {
+				state.loading = true;
+				state.error = null;
+			})
+			.addCase(updateProfile.fulfilled, (state, action) => {
+				state.loading = false;
+				state.user = action.payload;
+				state.isAuthenticated = true;
+			})
+			.addCase(updateProfile.rejected, (state, action) => {
+				state.loading = false;
+				state.error = action.payload;
+			})
+			// Get My Orders
+			.addCase(getMyOrders.pending, (state) => {
+				state.loading = true;
+				state.error = null;
+			})
+			.addCase(getMyOrders.fulfilled, (state, action) => {
+				state.loading = false;
+				state.orders = action.payload;
+			})
+			.addCase(getMyOrders.rejected, (state, action) => {
+				state.loading = false;
+				state.error = action.payload;
+			})
+			// Login Admin
+			.addCase(loginAdmin.pending, (state) => {
+				state.loading = true;
+				state.error = null;
+			})
+			.addCase(loginAdmin.fulfilled, (state, action) => {
+				state.loading = false;
+				state.user = action.payload.user;
+				state.token = action.payload.token;
+				state.isAuthenticated = true;
+			})
+			.addCase(loginAdmin.rejected, (state, action) => {
+				state.loading = false;
+				state.error = action.payload;
 			});
 	},
 });

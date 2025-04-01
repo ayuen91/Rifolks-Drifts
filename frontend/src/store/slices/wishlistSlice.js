@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
 	getWishlist,
 	addToWishlist,
-	removeFromWishlist,
+	removeFromWishlist as removeFromWishlistApi,
 } from "../../lib/supabase";
 
 export const fetchWishlist = createAsyncThunk(
@@ -36,7 +36,7 @@ export const removeFromWishlistAsync = createAsyncThunk(
 	async (productId, { getState, rejectWithValue }) => {
 		try {
 			const userId = getState().auth.user.id;
-			await removeFromWishlist(userId, productId);
+			await removeFromWishlistApi(userId, productId);
 			return productId;
 		} catch (error) {
 			return rejectWithValue(error.message);
@@ -84,4 +84,5 @@ const wishlistSlice = createSlice({
 });
 
 export const { clearWishlist } = wishlistSlice.actions;
+export const removeFromWishlist = removeFromWishlistAsync;
 export default wishlistSlice.reducer;
