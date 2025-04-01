@@ -16,16 +16,13 @@ async function runMigration() {
 				}/${maxRetries})...`
 			);
 			// Use DIRECT_URL for migrations to avoid connection pooling issues
-			execSync(
-				"DATABASE_URL=$DIRECT_URL npx prisma migrate deploy --accept-data-loss",
-				{
-					stdio: "inherit",
-					env: {
-						...process.env,
-						DATABASE_URL: process.env.DIRECT_URL,
-					},
-				}
-			);
+			execSync("DATABASE_URL=$DIRECT_URL npx prisma migrate deploy", {
+				stdio: "inherit",
+				env: {
+					...process.env,
+					DATABASE_URL: process.env.DIRECT_URL,
+				},
+			});
 			console.log("Migration successful!");
 			process.exit(0);
 		} catch (error) {
