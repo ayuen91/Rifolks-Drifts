@@ -1,0 +1,12 @@
+[build]
+buildCommand = "npm run build"
+watchPatterns = ["/backend/**/*"]
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+NODE_ENV = "production" 
