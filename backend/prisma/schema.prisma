@@ -13,15 +13,21 @@ datasource db {
 }
 
 model User {
-  id            String      @id @default(uuid())
-  email         String      @unique
-  name          String?
-  password      String
-  role          String      @default("user")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  orders        Order[]
-  codOrders     CodOrder[]
+  id                String      @id @default(uuid())
+  email             String      @unique
+  name              String?
+  password          String
+  role              String      @default("user")
+  firstName         String?
+  lastName          String?
+  address           Json?
+  phone             String?
+  resetPasswordToken String?
+  resetPasswordExpire DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  orders            Order[]
+  codOrders         CodOrder[]
 }
 
 model Product {

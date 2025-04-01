@@ -1,77 +1,49 @@
- const mongoose = require("mongoose");
- const bcrypt = require("bcryptjs");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+const bcrypt = require("bcryptjs");
 
- const userSchema = new mongoose.Schema(
-		{
-			username: {
-				type: String,
-				required: true,
-				unique: true,
-				trim: true,
+class User {
+	static async findByEmail(email) {
+		return prisma.user.findUnique({
+			where: { email },
+		});
+	}
+
+	static async findById(id) {
+		return prisma.user.findUnique({
+			where: { id },
+		});
+	}
+
+	static async create(userData) {
+		const hashedPassword = await bcrypt.hash(userData.password, 10);
+		return prisma.user.create({
+			data: {
+				...userData,
+				password: hashedPassword,
 			},
-			email: {
-				type: String,
-				required: true,
-				unique: true,
-				trim: true,
-				lowercase: true,
-			},
-			password: {
-				type: String,
-				required: true,
-			},
-			firstName: {
-				type: String,
-				trim: true,
-			},
-			lastName: {
-				type: String,
-				trim: true,
-			},
-			address: {
-				street: String,
-				city: String,
-				state: String,
-				postalCode: String,
-				country: String,
-			},
-			phone: {
-				type: String,
-				trim: true,
-			},
-			role: {
-				type: String,
-				enum: ["user", "admin"],
-				default: "user",
-			},
-			wishlist: [
-				{
-					type: mongoose.Schema.Types.ObjectId,
-					ref: "Product",
-				},
-			],
-			resetPasswordToken: String,
-			resetPasswordExpire: Date,
-		},
-		{
-			timestamps: true,
+		});
+	}
+
+	static async update(id, userData) {
+		if (userData.password) {
+			userData.password = await bcrypt.hash(userData.password, 10);
 		}
- );
+		return prisma.user.update({
+			where: { id },
+			data: userData,
+		});
+	}
 
- // Hash password before saving
- userSchema.pre("save", async function (next) {
-		if (!this.isModified("password")) {
-			next();
-		}
-		const salt = await bcrypt.genSalt(10);
-		this.password = await bcrypt.hash(this.password, salt);
- });
+	static async delete(id) {
+		return prisma.user.delete({
+			where: { id },
+		});
+	}
 
- // Compare password method
- userSchema.methods.matchPassword = async function (enteredPassword) {
-		return await bcrypt.compare(enteredPassword, this.password);
- };
+	static async comparePassword(password, hashedPassword) {
+		return bcrypt.compare(password, hashedPassword);
+	}
+}
 
- const User = mongoose.model("User", userSchema);
-
- module.exports = User;
+module.exports = User;
