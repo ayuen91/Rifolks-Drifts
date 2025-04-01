@@ -31,6 +31,14 @@ app.get("/health", async (req, res) => {
 	try {
 		// Test database connection
 		await prisma.$queryRaw`SELECT 1`;
+
+		// Test Supabase connection
+		const { data, error } = await supabase
+			.from("users")
+			.select("count")
+			.limit(1);
+		if (error) throw error;
+
 		res.status(200).json({
 			status: "healthy",
 			timestamp: new Date().toISOString(),
@@ -38,6 +46,9 @@ app.get("/health", async (req, res) => {
 			environment: process.env.NODE_ENV || "development",
 			port: process.env.PORT,
 			database: "connected",
+			supabase: "connected",
+			memory: process.memoryUsage(),
+			nodeVersion: process.version,
 		});
 	} catch (error) {
 		logger.error("Health check error:", error);
@@ -48,6 +59,7 @@ app.get("/health", async (req, res) => {
 				process.env.NODE_ENV === "development"
 					? error.stack
 					: undefined,
+			timestamp: new Date().toISOString(),
 		});
 	}
 });

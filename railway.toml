@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && npm ci && npx prisma generate && cd ../frontend && npm ci --omit=dev"
+buildCommand = "cd backend && npm ci --omit=dev && npx prisma generate && cd ../frontend && npm ci --omit=dev"
 watchPatterns = ["/backend/**/*"]
 
 [deploy]
@@ -9,7 +9,7 @@ healthcheckPath = "/health"
 healthcheckTimeout = 600
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-healthcheckInterval = 15
+healthcheckInterval = 30
 startupTimeout = 600
 
 [deploy.envVars]
@@ -25,10 +25,10 @@ RATE_LIMIT_MAX_REQUESTS = "100"
 LOG_LEVEL = "info"
 
 [deploy.healthcheck]
-interval = "15s"
+interval = "30s"
 timeout = "600s"
 retries = 3
-startPeriod = "30s"
+startPeriod = "60s"
 
 [deploy.railway]
 buildCommand = "cd backend && npm install --omit=dev && npx prisma generate"
