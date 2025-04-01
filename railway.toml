@@ -1,31 +1,33 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && npm ci --omit=dev && npx prisma generate"
+buildCommand = "cd backend && npm ci --omit=dev && npx prisma generate && npm run postinstall"
 watchPatterns = ["/backend/**/*"]
 
 [deploy]
-startCommand = "cd backend && npm run migrate && NODE_ENV=production PORT=$PORT npm start"
+startCommand = "cd backend && NODE_ENV=production npm run migrate && PORT=$PORT npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 600
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
-healthcheckInterval = 30
-startupTimeout = 600
+restartPolicyMaxRetries = 5
+healthcheckInterval = 45
+startupTimeout = 900
 
 [deploy.envVars]
 NODE_ENV = "production"
 PORT = "3001"
 SUPABASE_URL = "https://asopomvrogpnirgguquy.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzb3BvbXZyb2dwbmlyZ2d1cXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMzMzE4OTksImV4cCI6MjA1ODkwNzg5OX0.GZifjJopG_Sd3e_4XKtpVH-qPkAeqQeRe_7x5Mn9-rI"
-DATABASE_URL = "postgresql://postgres.asopomvrogpnirgguquy:z3v6hUVJMMfZtC5v@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
-DIRECT_URL = "postgresql://postgres.asopomvrogpnirgguquy:z3v6hUVJMMfZtC5v@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+DATABASE_URL = "postgresql://postgres.asopomvrogpnirgguquy:z3v6hUVJMMfZtC5v@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&connect_timeout=300"
+DIRECT_URL = "postgresql://postgres.asopomvrogpnirgguquy:z3v6hUVJMMfZtC5v@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?connect_timeout=300"
 ALLOWED_ORIGINS = "https://rifolks-drifts.netlify.app,http://localhost:3000"
 RATE_LIMIT_WINDOW_MS = "900000"
 RATE_LIMIT_MAX_REQUESTS = "100"
 LOG_LEVEL = "info"
+DATABASE_CONNECTION_RETRIES = "5"
+DATABASE_CONNECTION_RETRY_DELAY = "5000"
 
 [deploy.healthcheck]
-interval = "30s"
+interval = "45s"
 timeout = "600s"
-retries = 3
-startPeriod = "60s" 
+retries = 5
+startPeriod = "120s" 
