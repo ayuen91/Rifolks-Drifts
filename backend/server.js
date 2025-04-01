@@ -26,39 +26,6 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
-// Connection state tracking
-let isDatabaseConnected = false;
-let isSupabaseConnected = false;
-
-// Health check endpoint
-app.get("/health", async (req, res) => {
-	try {
-		// Check database connection
-		await prisma.$queryRaw`SELECT 1`;
-
-		// Check Supabase connection
-		const { data, error } = await supabase
-			.from("users")
-			.select("count")
-			.limit(1);
-		if (error) throw error;
-
-		res.status(200).json({
-			status: "healthy",
-			timestamp: new Date().toISOString(),
-			database: "connected",
-			supabase: "connected",
-		});
-	} catch (error) {
-		console.error("Health check failed:", error);
-		res.status(503).json({
-			status: "unhealthy",
-			timestamp: new Date().toISOString(),
-			error: error.message,
-		});
-	}
-});
-
 // Basic middleware
 app.use(express.json());
 app.use(morgan("combined"));
@@ -116,7 +83,6 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 		while (retries > 0) {
 			try {
 				await prisma.$queryRaw`SELECT 1`;
-				isDatabaseConnected = true;
 				logger.info("Database connection successful");
 				break;
 			} catch (error) {
@@ -131,7 +97,6 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 
 		logger.info(`Server running on port ${PORT}`);
 		logger.info(`Environment: ${process.env.NODE_ENV}`);
-		logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
 	} catch (error) {
 		logger.error("Failed to connect to database:", error);
 		process.exit(1);
