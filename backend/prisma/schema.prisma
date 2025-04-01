@@ -13,19 +13,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
+  id            String      @id @default(uuid())
+  email         String      @unique
   name          String?
   password      String
-  role          String    @default("user")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          String      @default("user")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   orders        Order[]
   codOrders     CodOrder[]
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
   description String
   price       Float
@@ -35,30 +35,32 @@ model Product {
   sizes       String[]
   colors      String[]
   gender      String
-  rating      Float    @default(0)
-  numReviews  Int      @default(0)
-  featured    Boolean  @default(false)
-  discount    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  rating      Float       @default(0)
+  numReviews  Int         @default(0)
+  featured    Boolean     @default(false)
+  discount    Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
 }
 
 model Order {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  items         Json
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  items         OrderItem[]
   totalAmount   Float
-  status        String   @default("pending")
+  status        String      @default("pending")
   paymentMethod String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model OrderItem {
   id        String   @id @default(uuid())
   orderId   String
   order     Order    @relation(fields: [orderId], references: [id])
-  productId String
+  productId Int
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
   price     Float
