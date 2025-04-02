@@ -1,6 +1,6 @@
 [build]
   command = "npm run build"
-  publish = "build"
+  publish = ".next"
 
 [[redirects]]
   from = "/*"
@@ -21,6 +21,7 @@
 
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
+  package = "@netlify/plugin-nextjs"
 
 [[redirects]]
   from = "/api/*"
