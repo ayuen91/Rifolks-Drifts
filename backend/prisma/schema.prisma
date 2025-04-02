@@ -3,11 +3,12 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
   relationMode = "prisma"
 }
@@ -52,6 +53,22 @@ model Product {
   reviews     Review[]
 }
 
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String
+  slug        String    @unique
+  image       String?
+  parentId    Int?
+  parent      Category? @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children    Category[] @relation("CategoryToCategory")
+  isActive    Boolean   @default(true)
+  featured    Boolean   @default(false)
+  gender      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model Order {
   id            String      @id @default(uuid())
   userId        String
@@ -60,6 +77,14 @@ model Order {
   totalAmount   Float
   status        String      @default("pending")
   paymentMethod String
+  isPaid        Boolean     @default(false)
+  paidAt        DateTime?
+  isDelivered   Boolean     @default(false)
+  deliveredAt   DateTime?
+  shippingAddress Json
+  itemsPrice    Float
+  taxPrice      Float
+  shippingPrice Float
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -72,6 +97,10 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
   price     Float
+  size      String?
+  color     String?
+  name      String
+  image     String?
 }
 
 model CodOrder {

@@ -1,11 +1,12 @@
-const Product = require("../models/Product");
-const { logger } = require("../utils/logger");
-const prisma = require("../utils/prisma");
+import { PrismaClient } from "@prisma/client";
+import { logger } from "../utils/logger.js";
+
+const prisma = new PrismaClient();
 
 // @desc    Fetch all products
 // @route   GET /api/products
 // @access  Public
-const getProducts = async (req, res) => {
+export const getProducts = async (req, res) => {
 	try {
 		const pageSize = 12;
 		const page = Number(req.query.page) || 1;
@@ -58,8 +59,8 @@ const getProducts = async (req, res) => {
 
 		// Get total count and products
 		const [count, products] = await Promise.all([
-			Product.count(where),
-			Product.findAll(where, skip, pageSize),
+			prisma.product.count(where),
+			prisma.product.findMany(where, skip, pageSize),
 		]);
 
 		res.json({
@@ -77,14 +78,20 @@ const getProducts = async (req, res) => {
 // @desc    Fetch single product
 // @route   GET /api/products/:id
 // @access  Public
-const getProductById = async (req, res) => {
+export const getProductById = async (req, res) => {
 	try {
-		const product = await Product.findById(req.params.id);
-		if (product) {
-			res.json(product);
-		} else {
-			res.status(404).json({ error: "Product not found" });
+		const product = await prisma.product.findUnique({
+			where: { id: parseInt(req.params.id) },
+			include: {
+				category: true,
+			},
+		});
+
+		if (!product) {
+			return res.status(404).json({ error: "Product not found" });
 		}
+
+		res.json(product);
 	} catch (error) {
 		logger.error("Error fetching product:", error);
 		res.status(500).json({ error: "Failed to fetch product" });
@@ -94,9 +101,23 @@ const getProductById = async (req, res) => {
 // @desc    Create a product
 // @route   POST /api/products
 // @access  Private/Admin
-const createProduct = async (req, res) => {
+export const createProduct = async (req, res) => {
 	try {
-		const product = await Product.create(req.body);
+		const { name, description, price, categoryId, imageUrl } = req.body;
+
+		const product = await prisma.product.create({
+			data: {
+				name,
+				description,
+				price: parseFloat(price),
+				categoryId: parseInt(categoryId),
+				imageUrl,
+			},
+			include: {
+				category: true,
+			},
+		});
+
 		res.status(201).json(product);
 	} catch (error) {
 		logger.error("Error creating product:", error);
@@ -107,12 +128,24 @@ const createProduct = async (req, res) => {
 // @desc    Update a product
 // @route   PUT /api/products/:id
 // @access  Private/Admin
-const updateProduct = async (req, res) => {
+export const updateProduct = async (req, res) => {
 	try {
-		const product = await Product.update(req.params.id, req.body);
-		if (!product) {
-			return res.status(404).json({ error: "Product not found" });
-		}
+		const { name, description, price, categoryId, imageUrl } = req.body;
+
+		const product = await prisma.product.update({
+			where: { id: parseInt(req.params.id) },
+			data: {
+				name,
+				description,
+				price: parseFloat(price),
+				categoryId: parseInt(categoryId),
+				imageUrl,
+			},
+			include: {
+				category: true,
+			},
+		});
+
 		res.json(product);
 	} catch (error) {
 		logger.error("Error updating product:", error);
@@ -123,12 +156,12 @@ const updateProduct = async (req, res) => {
 // @desc    Delete a product
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
-const deleteProduct = async (req, res) => {
+export const deleteProduct = async (req, res) => {
 	try {
-		const product = await Product.delete(req.params.id);
-		if (!product) {
-			return res.status(404).json({ error: "Product not found" });
-		}
+		await prisma.product.delete({
+			where: { id: parseInt(req.params.id) },
+		});
+
 		res.json({ message: "Product deleted successfully" });
 	} catch (error) {
 		logger.error("Error deleting product:", error);
@@ -139,9 +172,21 @@ const deleteProduct = async (req, res) => {
 // @desc    Get top rated products
 // @route   GET /api/products/top
 // @access  Public
-const getTopProducts = async (req, res) => {
+export const getTopProducts = async (req, res) => {
 	try {
-		const products = await Product.findTopRated();
+		const products = await prisma.product.findMany({
+			include: {
+				category: true,
+				reviews: true,
+			},
+			orderBy: {
+				reviews: {
+					_count: "desc",
+				},
+			},
+			take: 5,
+		});
+
 		res.json(products);
 	} catch (error) {
 		logger.error("Error fetching top products:", error);
@@ -152,68 +197,23 @@ const getTopProducts = async (req, res) => {
 // @desc    Create new review
 // @route   POST /api/products/:id/reviews
 // @access  Private
-const createProductReview = async (req, res) => {
+export const createProductReview = async (req, res) => {
 	try {
-		const product = await Product.findById(req.params.id);
+		const { rating, comment } = req.body;
+		const productId = parseInt(req.params.id);
 
-		if (product) {
-			// Check if user has already reviewed this product
-			const existingReview = await prisma.review.findFirst({
-				where: {
-					productId: parseInt(req.params.id),
-					userId: req.user.id,
-				},
-			});
+		const review = await prisma.review.create({
+			data: {
+				rating: parseInt(rating),
+				comment,
+				productId,
+				userId: req.user.id,
+			},
+		});
 
-			if (existingReview) {
-				return res
-					.status(400)
-					.json({ error: "Product already reviewed" });
-			}
-
-			// Create new review
-			const review = await prisma.review.create({
-				data: {
-					productId: parseInt(req.params.id),
-					userId: req.user.id,
-					rating: Number(req.body.rating),
-					comment: req.body.comment,
-				},
-			});
-
-			// Update product rating and numReviews
-			const allReviews = await prisma.review.findMany({
-				where: { productId: parseInt(req.params.id) },
-			});
-
-			const avgRating =
-				allReviews.reduce((acc, item) => acc + item.rating, 0) /
-				allReviews.length;
-
-			await prisma.product.update({
-				where: { id: parseInt(req.params.id) },
-				data: {
-					rating: avgRating,
-					numReviews: allReviews.length,
-				},
-			});
-
-			res.status(201).json({ message: "Review added" });
-		} else {
-			res.status(404).json({ error: "Product not found" });
-		}
+		res.status(201).json(review);
 	} catch (error) {
-		logger.error("Error creating product review:", error);
+		logger.error("Error creating review:", error);
 		res.status(500).json({ error: "Failed to create review" });
 	}
-};
-
-module.exports = {
-	getProducts,
-	getProductById,
-	createProduct,
-	updateProduct,
-	deleteProduct,
-	createProductReview,
-	getTopProducts,
 };

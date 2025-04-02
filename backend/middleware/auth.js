@@ -1,47 +1,44 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const { logger } = require("../utils/logger");
+import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
 
-const protect = async (req, res, next) => {
+const prisma = new PrismaClient();
+
+export const auth = async (req, res, next) => {
 	try {
-		let token;
-
-		if (req.headers.authorization?.startsWith("Bearer")) {
-			token = req.headers.authorization.split(" ")[1];
-		}
+		const token = req.header("Authorization")?.replace("Bearer ", "");
 
 		if (!token) {
-			return res.status(401).json({ error: "Not authorized, no token" });
-		}
-
-		try {
-			const decoded = jwt.verify(token, process.env.JWT_SECRET);
-			const user = await User.findById(decoded.id);
-
-			if (!user) {
-				return res.status(401).json({ error: "User not found" });
-			}
-
-			req.user = user;
-			next();
-		} catch (error) {
-			logger.error("Token verification failed:", error);
 			return res
 				.status(401)
-				.json({ error: "Not authorized, token failed" });
+				.json({ error: "No authentication token, access denied" });
+		}
+
+		const decoded = jwt.verify(token, process.env.JWT_SECRET);
+		const user = await prisma.user.findUnique({
+			where: { id: decoded.userId },
+		});
+
+		if (!user) {
+			return res.status(401).json({ error: "User not found" });
+		}
+
+		req.user = user;
+		next();
+	} catch (error) {
+		console.error("Auth middleware error:", error);
+		res.status(401).json({ error: "Token is invalid" });
+	}
+};
+
+export const admin = async (req, res, next) => {
+	try {
+		if (req.user && req.user.role === "admin") {
+			next();
+		} else {
+			res.status(403).json({ error: "Access denied. Admin only." });
 		}
 	} catch (error) {
-		logger.error("Auth middleware error:", error);
+		console.error("Admin middleware error:", error);
 		res.status(500).json({ error: "Server error" });
 	}
 };
-
-const admin = (req, res, next) => {
-	if (req.user && req.user.role === "admin") {
-		next();
-	} else {
-		res.status(401).json({ error: "Not authorized as admin" });
-	}
-};
-
-module.exports = { protect, admin };

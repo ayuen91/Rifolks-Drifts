@@ -1,24 +1,22 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import { createClient } from "@supabase/supabase-js";
+import { PrismaClient } from "@prisma/client";
+import { logger } from "./utils/logger.js";
 
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
-const { createClient } = require("@supabase/supabase-js");
-const { logger } = require("./utils/logger");
-const prisma = require("./utils/prisma");
+// Load environment variables
+dotenv.config();
 
-// Validate required environment variables
-const requiredEnvVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "DATABASE_URL"];
-for (const envVar of requiredEnvVars) {
-	if (!process.env[envVar]) {
-		logger.error(`Missing required environment variable: ${envVar}`);
-		process.exit(1);
-	}
-}
-
+// Initialize Express app
 const app = express();
+const port = process.env.PORT || 3001;
+
+// Initialize Prisma client
+const prisma = new PrismaClient();
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -26,113 +24,72 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY
 );
 
-// Basic middleware
+// Middleware
 app.use(express.json());
-app.use(morgan("combined"));
-
-// Security middleware
-app.use(
-	helmet({
-		crossOriginResourcePolicy: { policy: "cross-origin" },
-	})
-);
-
-// CORS configuration
-const corsOptions = {
-	origin: process.env.ALLOWED_ORIGINS?.split(",") || [
-		"http://localhost:3000",
-	],
-	credentials: true,
-	methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-	allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
+app.use(morgan("dev"));
+app.use(helmet());
+app.use(cors());
 
 // Rate limiting
 const limiter = rateLimit({
-	windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-	max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+	windowMs: 15 * 60 * 1000, // 15 minutes
+	max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
 
 // Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/products", require("./routes/productRoutes"));
-app.use("/api/orders", require("./routes/orderRoutes"));
-app.use("/api/cod", require("./routes/codRoutes"));
+import authRoutes from "./routes/authRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import codRoutes from "./routes/codRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/cod", codRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/users", userRoutes);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+	res.status(200).json({ status: "ok" });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-	logger.error("Unhandled error:", err);
-	res.status(500).json({
-		error: "Internal Server Error",
-		message:
-			process.env.NODE_ENV === "development"
-				? err.message
-				: "Something went wrong",
-	});
+	console.error(err.stack);
+	res.status(500).json({ error: "Something went wrong!" });
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, "0.0.0.0", async () => {
+const startServer = async () => {
 	try {
-		// Test database connection on startup with retries
-		let retries = 3;
-		while (retries > 0) {
-			try {
-				await prisma.$queryRaw`SELECT 1`;
-				logger.info("Database connection successful");
-				break;
-			} catch (error) {
-				retries--;
-				if (retries === 0) throw error;
-				logger.warn(
-					`Database connection attempt failed, retrying... (${retries} attempts left)`
-				);
-				await new Promise((resolve) => setTimeout(resolve, 5000));
-			}
-		}
+		// Test database connection
+		await prisma.$connect();
+		console.log("Database connected successfully");
 
-		logger.info(`Server running on port ${PORT}`);
-		logger.info(`Environment: ${process.env.NODE_ENV}`);
+		app.listen(port, () => {
+			console.log(`Server is running on port ${port}`);
+		});
 	} catch (error) {
-		logger.error("Failed to connect to database:", error);
+		console.error("Failed to start server:", error);
 		process.exit(1);
 	}
-});
+};
 
-// Handle server errors
-server.on("error", (error) => {
-	if (error.code === "EADDRINUSE") {
-		logger.error(
-			`Port ${PORT} is already in use. Please try a different port.`
-		);
-		process.exit(1);
-	} else {
-		logger.error("Server error:", error);
-	}
-});
+startServer();
 
-// Handle server shutdown gracefully
+// Handle graceful shutdown
 process.on("SIGTERM", async () => {
-	logger.info("SIGTERM received. Shutting down gracefully...");
+	console.log("SIGTERM received. Closing HTTP server...");
 	await prisma.$disconnect();
-	server.close(() => {
-		logger.info("Server closed");
-		process.exit(0);
-	});
+	process.exit(0);
 });
 
-// Handle uncaught exceptions
-process.on("uncaughtException", (error) => {
-	logger.error("Uncaught Exception:", error);
-	process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (reason, promise) => {
-	logger.error("Unhandled Rejection at:", promise, "reason:", reason);
-	process.exit(1);
+process.on("SIGINT", async () => {
+	console.log("SIGINT received. Closing HTTP server...");
+	await prisma.$disconnect();
+	process.exit(0);
 });

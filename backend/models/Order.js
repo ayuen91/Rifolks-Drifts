@@ -1,87 +1,71 @@
-const mongoose = require("mongoose");
+const prisma = require("../utils/prisma");
 
-const orderSchema = new mongoose.Schema(
-	{
-		user: {
-			type: mongoose.Schema.Types.ObjectId,
-			ref: "User",
-			required: true,
-		},
-		orderItems: [
-			{
-				product: {
-					type: mongoose.Schema.Types.ObjectId,
-					ref: "Product",
-					required: true,
+class Order {
+	static async create(orderData) {
+		return prisma.order.create({
+			data: orderData,
+			include: {
+				items: {
+					include: {
+						product: true,
+					},
 				},
-				name: String,
-				image: String,
-				price: Number,
-				quantity: {
-					type: Number,
-					required: true,
-					min: 1,
-				},
-				size: String,
-				color: String,
 			},
-		],
-		shippingAddress: {
-			street: String,
-			city: String,
-			state: String,
-			postalCode: String,
-			country: String,
-		},
-		itemsPrice: {
-			type: Number,
-			required: true,
-			default: 0.0,
-		},
-		taxPrice: {
-			type: Number,
-			required: true,
-			default: 0.0,
-		},
-		shippingPrice: {
-			type: Number,
-			required: true,
-			default: 0.0,
-		},
-		totalPrice: {
-			type: Number,
-			required: true,
-			default: 0.0,
-		},
-		isPaid: {
-			type: Boolean,
-			required: true,
-			default: false,
-		},
-		paidAt: Date,
-		isDelivered: {
-			type: Boolean,
-			required: true,
-			default: false,
-		},
-		deliveredAt: Date,
-		status: {
-			type: String,
-			enum: [
-				"pending",
-				"processing",
-				"shipped",
-				"delivered",
-				"cancelled",
-			],
-			default: "pending",
-		},
-	},
-	{
-		timestamps: true,
+		});
 	}
-);
 
-const Order = mongoose.model("Order", orderSchema);
+	static async findById(id) {
+		return prisma.order.findUnique({
+			where: { id },
+			include: {
+				items: {
+					include: {
+						product: true,
+					},
+				},
+			},
+		});
+	}
+
+	static async findByUserId(userId) {
+		return prisma.order.findMany({
+			where: { userId },
+			include: {
+				items: {
+					include: {
+						product: true,
+					},
+				},
+			},
+		});
+	}
+
+	static async updateStatus(id, status) {
+		return prisma.order.update({
+			where: { id },
+			data: { status },
+		});
+	}
+
+	static async updatePaymentStatus(id, isPaid) {
+		return prisma.order.update({
+			where: { id },
+			data: {
+				isPaid,
+				paidAt: isPaid ? new Date() : null,
+			},
+		});
+	}
+
+	static async updateDeliveryStatus(id, isDelivered) {
+		return prisma.order.update({
+			where: { id },
+			data: {
+				isDelivered,
+				deliveredAt: isDelivered ? new Date() : null,
+			},
+		});
+	}
+}
 
 module.exports = Order;

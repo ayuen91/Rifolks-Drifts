@@ -1,61 +1,38 @@
-const mongoose = require("mongoose");
+const prisma = require("../utils/prisma");
 
-const categorySchema = new mongoose.Schema(
-	{
-		name: {
-			type: String,
-			required: true,
-			unique: true,
-			trim: true,
-		},
-		description: {
-			type: String,
-			required: true,
-		},
-		slug: {
-			type: String,
-			unique: true,
-			lowercase: true,
-		},
-		image: {
-			type: String,
-		},
-		parent: {
-			type: mongoose.Schema.Types.ObjectId,
-			ref: "Category",
-			default: null,
-		},
-		isActive: {
-			type: Boolean,
-			default: true,
-		},
-		featured: {
-			type: Boolean,
-			default: false,
-		},
-		gender: {
-			type: String,
-			enum: ["men", "women", "unisex"],
-			required: true,
-		},
-	},
-	{
-		timestamps: true,
+class Category {
+	static async findAll() {
+		return prisma.category.findMany({
+			orderBy: {
+				name: "asc",
+			},
+		});
 	}
-);
 
-// Create slug from name before saving
-categorySchema.pre("save", function (next) {
-	if (!this.isModified("name")) {
-		return next();
+	static async findById(id) {
+		return prisma.category.findUnique({
+			where: { id: parseInt(id) },
+		});
 	}
-	this.slug = this.name
-		.toLowerCase()
-		.replace(/[^a-zA-Z0-9]/g, "-")
-		.replace(/-+/g, "-");
-	next();
-});
 
-const Category = mongoose.model("Category", categorySchema);
+	static async create(categoryData) {
+		return prisma.category.create({
+			data: categoryData,
+		});
+	}
+
+	static async update(id, categoryData) {
+		return prisma.category.update({
+			where: { id: parseInt(id) },
+			data: categoryData,
+		});
+	}
+
+	static async delete(id) {
+		return prisma.category.delete({
+			where: { id: parseInt(id) },
+		});
+	}
+}
 
 module.exports = Category;

@@ -1,40 +1,83 @@
-const express = require('express');
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+import { auth } from "../middleware/auth.js";
+
 const router = express.Router();
-const { supabase } = require('../utils/supabase');
-const { logger } = require('../utils/logger');
+const prisma = new PrismaClient();
 
-// Get COD rules
-router.get('/rules', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('cod_rules')
-      .select('*')
-      .single();
+// Request COD (protected route)
+router.post("/request", auth, async (req, res) => {
+	try {
+		const { orderId, address, phone } = req.body;
 
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    logger.error('Error fetching COD rules:', error);
-    res.status(500).json({ error: error.message });
-  }
+		const order = await prisma.order.findUnique({
+			where: { id: parseInt(orderId) },
+		});
+
+		if (!order) {
+			return res.status(404).json({ error: "Order not found" });
+		}
+
+		const codRequest = await prisma.codRequest.create({
+			data: {
+				orderId: parseInt(orderId),
+				userId: req.user.id,
+				address,
+				phone,
+				status: "PENDING",
+			},
+		});
+
+		res.status(201).json(codRequest);
+	} catch (error) {
+		console.error("Error creating COD request:", error);
+		res.status(500).json({ error: "Failed to create COD request" });
+	}
 });
 
-// Update COD rules
-router.put('/rules', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('cod_rules')
-      .update(req.body)
-      .eq('id', 1)
-      .select()
-      .single();
+// Get COD requests for user (protected route)
+router.get("/", auth, async (req, res) => {
+	try {
+		const codRequests = await prisma.codRequest.findMany({
+			where: {
+				userId: req.user.id,
+			},
+			include: {
+				order: true,
+			},
+		});
 
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    logger.error('Error updating COD rules:', error);
-    res.status(500).json({ error: error.message });
-  }
+		res.json(codRequests);
+	} catch (error) {
+		console.error("Error fetching COD requests:", error);
+		res.status(500).json({ error: "Failed to fetch COD requests" });
+	}
 });
 
-module.exports = router; 
+// Update COD request status (admin only)
+router.put("/:id", auth, async (req, res) => {
+	try {
+		if (req.user.role !== "admin") {
+			return res.status(403).json({ error: "Not authorized as admin" });
+		}
+
+		const { status } = req.body;
+
+		const codRequest = await prisma.codRequest.update({
+			where: { id: parseInt(req.params.id) },
+			data: {
+				status,
+			},
+			include: {
+				order: true,
+			},
+		});
+
+		res.json(codRequest);
+	} catch (error) {
+		console.error("Error updating COD request:", error);
+		res.status(500).json({ error: "Failed to update COD request" });
+	}
+});
+
+export default router;
