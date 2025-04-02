@@ -6,7 +6,7 @@ const nextConfig = {
 		domains: ["asopomvrogpnirgguquy.supabase.co"],
 	},
 	experimental: {
-		serverActions: true,
+		// Remove serverActions as it's now available by default
 	},
 };
 
