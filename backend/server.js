@@ -28,7 +28,12 @@ const supabase = createClient(
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(helmet());
-app.use(cors());
+app.use(
+	cors({
+		origin: process.env.ALLOWED_ORIGINS.split(","),
+		credentials: true,
+	})
+);
 
 // Rate limiting
 const limiter = rateLimit({
