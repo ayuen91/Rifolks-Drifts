@@ -17,7 +17,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://rifolks-drifts.railway.app;"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co https://rifolks-drifts-production.up.railway.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://rifolks-drifts-production.up.railway.app;"
 
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
@@ -25,6 +25,6 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://rifolks-drifts.railway.app/api/:splat"
+  to = "https://rifolks-drifts-production.up.railway.app/api/:splat"
   status = 200
-  force = true 
+  force = true
