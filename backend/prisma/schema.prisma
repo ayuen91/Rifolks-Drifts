@@ -28,6 +28,7 @@ model User {
   updatedAt         DateTime    @updatedAt
   orders            Order[]
   codOrders         CodOrder[]
+  reviews           Review[]
 }
 
 model Product {
@@ -48,6 +49,7 @@ model Product {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   orderItems  OrderItem[]
+  reviews     Review[]
 }
 
 model Order {
@@ -82,4 +84,16 @@ model CodOrder {
   phone       String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rating    Float
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 } 
