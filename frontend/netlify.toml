@@ -1,14 +1,16 @@
 [build]
   command = "npm run build"
-  publish = "dist" # Correct build output directory for Vite
+  publish = ".next" # Correct build output directory for Next.js
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Removed generic SPA redirect; Next.js plugin handles routing
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
 
 [build.environment]
   NODE_VERSION = "18"
+  KEY = "value"
 
 [[headers]]
   for = "/*"
