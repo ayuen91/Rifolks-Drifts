@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { AppProps } from "next/app";
 import { supabase } from "../utils/supabase";
-import "../styles/globals.css";
+import "../../app/styles/globals.css";
 
 interface Todo {
 	id: number;
