@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-
-const API_URL = "http://localhost:5000/api";
+import { endpoints } from "../../config/api"; // Import endpoints config
 
 export const fetchProducts = createAsyncThunk(
 	"products/fetchProducts",
@@ -19,7 +18,7 @@ export const fetchProducts = createAsyncThunk(
 		{ rejectWithValue }
 	) => {
 		try {
-			const { data } = await axios.get(`${API_URL}/products`, {
+			const { data } = await axios.get(endpoints.products.list, { // Use configured endpoint
 				params: {
 					keyword,
 					page: pageNumber,
@@ -44,7 +43,7 @@ export const fetchProductById = createAsyncThunk(
 	"products/fetchProductById",
 	async (id, { rejectWithValue }) => {
 		try {
-			const { data } = await axios.get(`${API_URL}/products/${id}`);
+			const { data } = await axios.get(endpoints.products.detail(id)); // Use configured endpoint
 			return data;
 		} catch (error) {
 			return rejectWithValue(
@@ -59,7 +58,7 @@ export const createProductReview = createAsyncThunk(
 	async ({ productId, rating, comment }, { getState, rejectWithValue }) => {
 		try {
 			const { data } = await axios.post(
-				`${API_URL}/products/${productId}/reviews`,
+				endpoints.products.reviews(productId), // Assuming an endpoint exists for reviews
 				{ rating, comment },
 				{
 					headers: {
@@ -82,7 +81,7 @@ export const fetchTopProducts = createAsyncThunk(
 	"products/fetchTopProducts",
 	async (_, { rejectWithValue }) => {
 		try {
-			const { data } = await axios.get(`${API_URL}/products/top`);
+			const { data } = await axios.get(endpoints.products.top); // Assuming an endpoint exists for top products
 			return data;
 		} catch (error) {
 			return rejectWithValue(

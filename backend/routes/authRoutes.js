@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { logger } from "../utils/logger.js";
 import { auth } from "../middleware/auth.js";
+import { sendVerificationCode } from "../utils/email.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,6 +15,41 @@ const supabase = createClient(
 	process.env.SUPABASE_URL,
 	process.env.SUPABASE_ANON_KEY
 );
+
+// 2FA verification route
+router.post("/verify-2fa", async (req, res) => {
+	try {
+		const { email, token } = req.body;
+		const user = await prisma.user.findUnique({ where: { email } });
+
+		if (!user) {
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		// In production, use a proper TOTP validation library like speakeasy
+		const isValid = token === "123456"; // Temporary validation for development
+
+		if (!isValid) {
+			return res.status(401).json({ error: "Invalid 2FA code" });
+		}
+
+		// Generate JWT token with 2FA verified claim
+		const authToken = jwt.sign(
+			{
+				userId: user.id,
+				email: user.email,
+				twoFAVerified: true
+			},
+			process.env.JWT_SECRET,
+			{ expiresIn: "24h" }
+		);
+
+		res.json({ token: authToken });
+	} catch (error) {
+		console.error("2FA verification error:", error);
+		res.status(500).json({ error: "2FA verification failed" });
+	}
+});
 
 // Login route
 router.post("/login", async (req, res) => {

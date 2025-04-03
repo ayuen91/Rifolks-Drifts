@@ -4,6 +4,8 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { login } from "../store/slices/authSlice";
 import toast from "react-hot-toast";
 
+import { supabase } from "../lib/supabase";
+
 const Login = () => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -41,9 +43,14 @@ const Login = () => {
 		if (!validateForm()) return;
 
 		try {
-			await dispatch(login({ email, password })).unwrap();
-			toast.success("Login successful");
-			navigate(redirect);
+			const result = await dispatch(login({ email, password })).unwrap();
+			
+			if (result.totpRequired) {
+				navigate(`/verify-2fa?redirect=${encodeURIComponent(redirect)}`);
+			} else {
+				toast.success("Login successful");
+				navigate(redirect);
+			}
 		} catch (error) {
 			toast.error(error.message);
 		}
@@ -144,6 +151,38 @@ const Login = () => {
 								Forgot your password?
 							</Link>
 						</div>
+					</div>
+					<div>
+						<button
+							type="button"
+							className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+							onClick={async () => {
+								const { error } = await supabase.auth.signInWithOAuth({
+									provider: 'google',
+								});
+								if (error) {
+									toast.error(error.message);
+								}
+							}}
+						>
+							Sign in with Google
+						</button>
+					</div>
+					<div>
+						<button
+							type="button"
+							className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-700 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-700"
+							onClick={async () => {
+								const { error } = await supabase.auth.signInWithOAuth({
+									provider: 'facebook',
+								});
+								if (error) {
+									toast.error(error.message);
+								}
+							}}
+						>
+							Sign in with Facebook
+						</button>
 					</div>
 
 					<div>

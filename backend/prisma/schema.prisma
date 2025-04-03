@@ -25,6 +25,10 @@ model User {
   phone             String?
   resetPasswordToken String?
   resetPasswordExpire DateTime?
+  totpSecret        String?     @unique
+  tempTotpSecret    String?
+  totpEnabled       Boolean     @default(false)
+  totpExpiresAt     DateTime?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   orders            Order[]

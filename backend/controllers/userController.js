@@ -1,179 +1,247 @@
-const User = require("../models/User");
-const jwt = require("jsonwebtoken");
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { logger } from "../utils/logger.js";
 
-// Generate JWT
-const generateToken = (id) => {
-	return jwt.sign({ id }, process.env.JWT_SECRET, {
-		expiresIn: "30d",
-	});
-};
+const prisma = new PrismaClient();
 
-// @desc    Register a new user
-// @route   POST /api/users/register
-// @access  Public
-const registerUser = async (req, res) => {
+// Get all users
+export const getUsers = async (req, res) => {
 	try {
-		const { username, email, password, firstName, lastName } = req.body;
-
-		const userExists = await User.findOne({ email });
-
-		if (userExists) {
-			return res.status(400).json({ message: "User already exists" });
-		}
-
-		const user = await User.create({
-			username,
-			email,
-			password,
-			firstName,
-			lastName,
-		});
-
-		if (user) {
-			res.status(201).json({
-				_id: user._id,
-				username: user.username,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-				token: generateToken(user._id),
-			});
-		}
-	} catch (error) {
-		res.status(500).json({ message: error.message });
-	}
-};
-
-// @desc    Login user
-// @route   POST /api/users/login
-// @access  Public
-const loginUser = async (req, res) => {
-	try {
-		const { email, password } = req.body;
-
-		const user = await User.findOne({ email });
-
-		if (user && (await user.matchPassword(password))) {
-			res.json({
-				_id: user._id,
-				username: user.username,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-				token: generateToken(user._id),
-			});
-		} else {
-			res.status(401).json({ message: "Invalid email or password" });
-		}
-	} catch (error) {
-		res.status(500).json({ message: error.message });
-	}
-};
-
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
-const getUserProfile = async (req, res) => {
-	try {
-		const user = await User.findById(req.user._id);
-
-		if (user) {
-			res.json({
-				_id: user._id,
-				username: user.username,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-				address: user.address,
-				phone: user.phone,
-				wishlist: user.wishlist,
-			});
-		} else {
-			res.status(404).json({ message: "User not found" });
-		}
-	} catch (error) {
-		res.status(500).json({ message: error.message });
-	}
-};
-
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
-const updateUserProfile = async (req, res) => {
-	try {
-		const user = await User.findById(req.user._id);
-
-		if (user) {
-			user.username = req.body.username || user.username;
-			user.email = req.body.email || user.email;
-			user.firstName = req.body.firstName || user.firstName;
-			user.lastName = req.body.lastName || user.lastName;
-			user.address = req.body.address || user.address;
-			user.phone = req.body.phone || user.phone;
-
-			if (req.body.password) {
-				user.password = req.body.password;
-			}
-
-			const updatedUser = await user.save();
-
-			res.json({
-				_id: updatedUser._id,
-				username: updatedUser.username,
-				email: updatedUser.email,
-				firstName: updatedUser.firstName,
-				lastName: updatedUser.lastName,
-				role: updatedUser.role,
-				address: updatedUser.address,
-				phone: updatedUser.phone,
-				token: generateToken(updatedUser._id),
-			});
-		} else {
-			res.status(404).json({ message: "User not found" });
-		}
-	} catch (error) {
-		res.status(500).json({ message: error.message });
-	}
-};
-
-// @desc    Get all users (admin only)
-// @route   GET /api/users
-// @access  Private/Admin
-const getUsers = async (req, res) => {
-	try {
-		const users = await User.find().select("-password");
+		const users = await prisma.user.findMany();
 		res.json(users);
 	} catch (error) {
-		res.status(500).json({ message: error.message });
+		logger.error("Error fetching users:", error);
+		res.status(500).json({ error: "Failed to fetch users" });
 	}
 };
 
-// @desc    Delete user (admin only)
-// @route   DELETE /api/users/:id
-// @access  Private/Admin
-const deleteUser = async (req, res) => {
+// Create a new user
+export const createUser = async (req, res) => {
 	try {
-		const user = await User.findById(req.params.id);
+		const { email, password, name, role } = req.body;
 
-		if (user) {
-			await user.remove();
-			res.json({ message: "User removed" });
-		} else {
-			res.status(404).json({ message: "User not found" });
+		// Check if user already exists
+		const existingUser = await prisma.user.findUnique({
+			where: { email },
+		});
+
+		if (existingUser) {
+			return res.status(400).json({ error: "User already exists" });
 		}
+
+		// Hash password
+		const hashedPassword = await bcrypt.hash(password, 10);
+
+		// Create user in database
+		const user = await prisma.user.create({
+			data: {
+				email,
+				password: hashedPassword,
+				name,
+				role,
+			},
+		});
+
+		res.status(201).json({
+			message: "User created successfully",
+			user: {
+				id: user.id,
+				email: user.email,
+				name: user.name,
+				role: user.role,
+			},
+		});
 	} catch (error) {
-		res.status(500).json({ message: error.message });
+		logger.error("Error creating user:", error);
+		res.status(500).json({ error: "Failed to create user" });
 	}
 };
 
-module.exports = {
-	registerUser,
-	loginUser,
-	getUserProfile,
-	updateUserProfile,
-	getUsers,
-	deleteUser,
+// Update an existing user
+export const updateUser = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { email, password, name, role } = req.body;
+
+		// Hash password if provided
+		let hashedPassword = null;
+		if (password) {
+			hashedPassword = await bcrypt.hash(password, 10);
+		}
+
+		// Update user in database
+		const user = await prisma.user.update({
+			where: { id: parseInt(id) },
+			data: {
+				email,
+				...(hashedPassword ? { password: hashedPassword } : {}),
+				name,
+				role,
+			},
+		});
+
+		res.json({
+			message: "User updated successfully",
+			user: {
+				id: user.id,
+				email: user.email,
+				name: user.name,
+				role: user.role,
+			},
+		});
+	} catch (error) {
+		logger.error("Error updating user:", error);
+		res.status(500).json({ error: "Failed to update user" });
+	}
+};
+// Delete an existing user
+export const deleteUser = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		// Delete user from database
+		await prisma.user.delete({
+			where: { id: parseInt(id) },
+		});
+
+		res.json({ message: "User deleted successfully" });
+	} catch (error) {
+		logger.error("Error deleting user:", error);
+		res.status(500).json({ error: "Failed to delete user" });
+	}
+};
+
+// 2FA Controllers
+export const generate2FASecret = async (req, res) => {
+    try {
+        const secret = authenticator.generateSecret();
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: {
+                tempTotpSecret: secret,
+                totpExpiresAt: new Date(Date.now() + 300000)
+            }
+        });
+
+        const otpauthUrl = authenticator.keyuri(user.email, 'Rifolks-Drifts', secret);
+
+        res.json({
+            success: true,
+            secret,
+            otpauthUrl,
+            expiresAt: user.totpExpiresAt
+        });
+    } catch (error) {
+        logger.error('2FA Secret Generation Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate 2FA setup',
+            error: error.message
+        });
+    }
+};
+
+export const verify2FASetup = async (req, res) => {
+    try {
+        const { code } = req.body;
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
+        if (!user?.tempTotpSecret) {
+            return res.status(400).json({
+                success: false,
+                message: 'No pending 2FA setup'
+            });
+        }
+
+        const isValid = authenticator.verify({
+            secret: user.tempTotpSecret,
+            encoding: 'base32',
+            token: code
+        });
+
+        if (!isValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid verification code'
+            });
+        }
+
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: {
+                totpSecret: user.tempTotpSecret,
+                totpEnabled: true,
+                tempTotpSecret: null,
+                totpExpiresAt: null
+            }
+        });
+
+        res.json({
+            success: true,
+            message: '2FA setup completed successfully'
+        });
+    } catch (error) {
+        logger.error('2FA Verification Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to verify 2FA setup',
+            error: error.message
+        });
+    }
+};
+
+export const verify2FALogin = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!user?.totpEnabled || !user.totpSecret) {
+            return res.status(400).json({
+                success: false,
+                message: '2FA not enabled for this account'
+            });
+        }
+
+        const isValid = authenticator.verify({
+            secret: user.totpSecret,
+            encoding: 'base32',
+            token: code
+        });
+
+        if (!isValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid 2FA code'
+            });
+        }
+
+        const token = jwt.sign(
+            { userId: user.id, mfaVerified: true },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 3600000
+        });
+
+        res.json({
+            success: true,
+            message: '2FA verification successful'
+        });
+    } catch (error) {
+        logger.error('2FA Login Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to verify 2FA code',
+            error: error.message
+        });
+    }
 };

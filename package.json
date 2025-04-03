@@ -11,5 +11,12 @@
 	},
 	"engines": {
 		"node": ">=18.17.0"
+	},
+	"dependencies": {
+		"postgres": "3.4.5"
+	},
+	"devDependencies": {
+		"@types/react-icons": "2.2.7",
+		"@types/react-router-dom": "5.3.3"
 	}
 }

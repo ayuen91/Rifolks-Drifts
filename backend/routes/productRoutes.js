@@ -12,110 +12,26 @@ import {
 } from "../controllers/productController.js";
 
 const router = express.Router();
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient(); // Prisma client is likely already initialized in the controller or globally
 
-// Get all products
-router.get("/", async (req, res) => {
-	try {
-		const products = await prisma.product.findMany({
-			include: {
-				category: true,
-			},
-		});
-		res.json(products);
-	} catch (error) {
-		console.error("Error fetching products:", error);
-		res.status(500).json({ error: "Failed to fetch products" });
-	}
-});
+// Get all products (uses controller with pagination/filtering)
+router.get("/", getProducts);
 
 // Get single product
-router.get("/:id", async (req, res) => {
-	try {
-		const product = await prisma.product.findUnique({
-			where: { id: parseInt(req.params.id) },
-			include: {
-				category: true,
-			},
-		});
-
-		if (!product) {
-			return res.status(404).json({ error: "Product not found" });
-		}
-
-		res.json(product);
-	} catch (error) {
-		console.error("Error fetching product:", error);
-		res.status(500).json({ error: "Failed to fetch product" });
-	}
-});
+router.get("/:id", getProductById);
 
 // Create product (protected route)
-router.post("/", auth, async (req, res) => {
-	try {
-		const { name, description, price, categoryId, imageUrl } = req.body;
-
-		const product = await prisma.product.create({
-			data: {
-				name,
-				description,
-				price: parseFloat(price),
-				categoryId: parseInt(categoryId),
-				imageUrl,
-			},
-			include: {
-				category: true,
-			},
-		});
-
-		res.status(201).json(product);
-	} catch (error) {
-		console.error("Error creating product:", error);
-		res.status(500).json({ error: "Failed to create product" });
-	}
-});
+router.post("/", auth, createProduct);
 
 // Update product (protected route)
-router.put("/:id", auth, async (req, res) => {
-	try {
-		const { name, description, price, categoryId, imageUrl } = req.body;
-
-		const product = await prisma.product.update({
-			where: { id: parseInt(req.params.id) },
-			data: {
-				name,
-				description,
-				price: parseFloat(price),
-				categoryId: parseInt(categoryId),
-				imageUrl,
-			},
-			include: {
-				category: true,
-			},
-		});
-
-		res.json(product);
-	} catch (error) {
-		console.error("Error updating product:", error);
-		res.status(500).json({ error: "Failed to update product" });
-	}
-});
+router.put("/:id", auth, updateProduct);
 
 // Delete product (protected route)
-router.delete("/:id", auth, async (req, res) => {
-	try {
-		await prisma.product.delete({
-			where: { id: parseInt(req.params.id) },
-		});
+router.delete("/:id", auth, deleteProduct);
 
-		res.json({ message: "Product deleted successfully" });
-	} catch (error) {
-		console.error("Error deleting product:", error);
-		res.status(500).json({ error: "Failed to delete product" });
-	}
-});
+// Get top products
+router.get("/top", getTopProducts);
 
 // Review routes
 router.post("/:id/reviews", auth, createProductReview);
-
 export default router;

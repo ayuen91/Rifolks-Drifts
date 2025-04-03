@@ -16,6 +16,8 @@ export const endpoints = {
 		create: `${API_URL}/products`,
 		update: (id) => `${API_URL}/products/${id}`,
 		delete: (id) => `${API_URL}/products/${id}`,
+		reviews: (id) => `${API_URL}/products/${id}/reviews`, // Add reviews endpoint
+		top: `${API_URL}/products/top`, // Add top products endpoint
 	},
 	orders: {
 		list: `${API_URL}/orders`,

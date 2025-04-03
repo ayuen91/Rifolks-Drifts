@@ -50,6 +50,7 @@ import codRoutes from "./routes/codRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);

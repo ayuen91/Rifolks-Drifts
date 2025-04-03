@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect, ReactNode } from "react"; // Added ReactNode
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux"; // Import TypedUseSelectorHook
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Use v6 hooks
 import {
 	FiBell,
 	FiUsers,
@@ -11,30 +11,51 @@ import {
 } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
 import { fetchNotifications } from "../../store/slices/notificationSlice";
+import { RootState, AppDispatch } from "../../store/store"; // Import store types
 import NotificationsDropdown from "./NotificationsDropdown";
 import logo from "../../assets/logo.svg";
 
-const AdminLayout = ({ children }) => {
+// Removed unused imports: UserManagement, ProductManagement, AnalyticsReporting, InventoryManagement
+
+// Define the props type
+interface AdminLayoutProps {
+  children: ReactNode;
+}
+
+// Create typed hooks
+const useAppDispatch = () => useDispatch<AppDispatch>();
+const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+// Define the component
+const AdminLayout = ({ children }: AdminLayoutProps) => {
 	const [showNotifications, setShowNotifications] = useState(false);
-	const dispatch = useDispatch();
-	const navigate = useNavigate();
+	const dispatch = useAppDispatch(); // Use typed dispatch
+	const navigate = useNavigate(); // Use v6 hook
 	const location = useLocation();
-	const { user, role } = useSelector((state) => state.auth);
-	const { unreadCount } = useSelector((state) => state.notifications);
+	// Use typed selector and access role from user metadata
+	const user = useAppSelector((state) => state.auth.user);
+	// Use typed selector and access role from user metadata safely (using any for now)
+	const role = (user as any)?.user_metadata?.role as string | undefined;
+	// Use typed selector for notifications, provide default
+	const { unreadCount = 0 } = useAppSelector((state) => state.notifications) ?? {};
 
 	useEffect(() => {
-		dispatch(fetchNotifications());
-		const interval = setInterval(() => {
+		// Only fetch notifications if dispatch is available
+		if (dispatch) {
 			dispatch(fetchNotifications());
-		}, 30000); // Fetch notifications every 30 seconds
+			const interval = setInterval(() => {
+				dispatch(fetchNotifications());
+			}, 30000); // Fetch notifications every 30 seconds
 
-		return () => clearInterval(interval);
+			return () => clearInterval(interval);
+		}
 	}, [dispatch]);
 
 	const handleLogout = () => {
+		// No need to check dispatch now with typed hook
 		dispatch(logout());
-		navigate("/admin/login");
-	};
+		navigate("/admin/login"); // Use v6 navigation
+	}; // Removed extra brace
 
 	const navigation = [
 		{ name: "Dashboard", path: "/admin", icon: FiShoppingBag },
@@ -89,9 +110,10 @@ const AdminLayout = ({ children }) => {
 					<div className="p-4 border-t dark:border-gray-700">
 						<div className="flex items-center">
 							<div className="flex-1">
-								<p className="font-medium">{user?.name}</p>
+								{/* Access name via user_metadata or email as fallback (using any) */}
+								<p className="font-medium">{(user as any)?.user_metadata?.name || (user as any)?.email || 'User'}</p>
 								<p className="text-sm text-gray-500 dark:text-gray-400">
-									{role}
+									{role || 'Role'}
 								</p>
 							</div>
 							<button
@@ -141,7 +163,7 @@ const AdminLayout = ({ children }) => {
 				</header>
 
 				{/* Page Content */}
-				<main className="p-6">{children}</main>
+				<main className="p-6">{children}</main> {/* Removed 'as React.ReactNode' */}
 			</div>
 		</div>
 	);
