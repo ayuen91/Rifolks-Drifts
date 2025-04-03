@@ -1,19 +1,16 @@
-import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
-
-dotenv.config();
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-async function testConnection() {
-	try {
-		await prisma.$connect();
-		console.log("Database connection successful!");
-		await prisma.$disconnect();
-	} catch (error) {
-		console.error("Database connection failed:", error);
-		process.exit(1);
-	}
+async function main() {
+  const users = await prisma.user.findMany();
+  console.log(users);
 }
 
-testConnection();
+main()
+  .catch((e) => {
+    throw e;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
